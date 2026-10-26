@@ -1,0 +1,140 @@
+generator client {
+  provider = "prisma-client"
+  output = "../src/generated/prisma"
+  moduleFormat = "esm"
+  importFileExtension = "js"
+}
+datasource db {
+  provider = "postgresql"
+}
+enum Role {
+  USER
+  APP_ADMIN
+  READ_ONLY
+  TREASURY
+}
+model User {
+  id Int @id @default(autoincrement())
+  email String @unique
+  passwordHash String
+  firstName String?
+  lastName String?
+  roles Role[] @default([USER])
+  tenantId String @default(uuid())
+  clientId String @default(uuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  sessions Session[]
+  @@unique([tenantId, clientId])
+}
+model Session {
+  id String @id
+  userId Int
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  refreshTokenHash String
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  @@index([userId])
+}
+enum SyncStatus {
+  READY
+  RECONCILIATION_REQUIRED
+}
+enum ReservationStatus {
+  ACTIVE
+  RELEASED
+  RECONCILED_CLOSED
+}
+model Program {
+  id String @id @db.Uuid
+  tenantId String
+  currency String @db.VarChar(3)
+  limitMinor BigInt
+  reservedMinor BigInt @default(0)
+  stateVersion BigInt @default(0)
+  lastAppliedTreasuryRevision BigInt @default(0)
+  highestSeenTreasuryRevision BigInt @default(0)
+  syncStatus SyncStatus @default(RECONCILIATION_REQUIRED)
+  lastTreasuryAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  reservations Reservation[]
+  movements CapacityMovement[]
+  @@unique([tenantId, id])
+}
+model Reservation {
+  id String @id @db.Uuid
+  tenantId String
+  programId String @db.Uuid
+  invoiceId String
+  invoiceMinor BigInt
+  invoiceCurrency String @db.VarChar(3)
+  reservedMinor BigInt
+  fxRate Decimal @db.Decimal(38, 18)
+  fxDirection String
+  fxSource String
+  fxAsOf DateTime
+  status ReservationStatus @default(ACTIVE)
+  createdAt DateTime @default(now())
+  closedAt DateTime?
+  program Program @relation(fields: [tenantId, programId], references: [tenantId, id], onDelete: Restrict)
+  @@unique([tenantId, invoiceId])
+  @@index([tenantId, programId, status, id])
+}
+model CapacityMovement {
+  id String @id @db.Uuid
+  tenantId String
+  programId String @db.Uuid
+  reservationId String? @db.Uuid
+  limitDelta BigInt
+  reservedDelta BigInt
+  reason String
+  actor String
+  operationId String
+  stateVersion BigInt
+  createdAt DateTime @default(now())
+  program Program @relation(fields: [tenantId, programId], references: [tenantId, id], onDelete: Restrict)
+  @@unique([tenantId, programId, stateVersion])
+}
+model IdempotencyRequest {
+  tenantId String
+  clientId String
+  key String
+  programId String @db.Uuid
+  fingerprint String
+  status Int?
+  result Json?
+  createdAt DateTime @default(now())
+  @@id([tenantId, clientId, key])
+}
+model TreasuryInbox {
+  id String @id @db.Uuid
+  source String
+  eventId String
+  tenantId String
+  programId String @db.Uuid
+  revision BigInt
+  fingerprint String
+  revisionFingerprint String
+  topic String
+  partition Int
+  offset String
+  payload Json
+  result Json?
+  createdAt DateTime @default(now())
+  @@unique([source, eventId])
+  @@index([source, tenantId, programId, revision])
+}
+model TreasuryQuarantine {
+  id String @id @db.Uuid
+  source String
+  topic String
+  partition Int
+  offset String
+  rawBase64 String
+  reason String
+  createdAt DateTime @default(now())
+  @@unique([source, topic, partition, offset])
+}

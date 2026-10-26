@@ -1,0 +1,55 @@
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "rootDir": "src",
+    "outDir": "dist",
+    "strict": true,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "sourceMap": true,
+    "declaration": true,
+    "paths": {
+      "#core/*": [
+        "./src/core/*"
+      ],
+      "#config/*": [
+        "./src/config/*"
+      ],
+      "#constants/*": [
+        "./src/constants/*"
+      ],
+      "#decorators/*": [
+        "./src/decorators/*"
+      ],
+      "#guards/*": [
+        "./src/guards/*"
+      ],
+      "#interceptors/*": [
+        "./src/interceptors/*"
+      ],
+      "#filters/*": [
+        "./src/filters/*"
+      ],
+      "#helpers/*": [
+        "./src/helpers/*"
+      ],
+      "#interfaces/*": [
+        "./src/interfaces/*"
+      ],
+      "#generated/*": [
+        "./src/generated/*"
+      ]
+    }
+  },
+  "include": [
+    "src/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
+}
