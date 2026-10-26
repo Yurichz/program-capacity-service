@@ -1,8 +1,18 @@
-# Program Capacity
+# Program Capacity Service
 
-An authenticated NestJS backend and React operator workspace for invoice capacity reservation, full release and version-aware treasury reconciliation over Kafka. The API follows the self-contained NestJS Developer / NestJS Core standard. The interface uses an original Program Capacity identity with a light, blue-accented financial dashboard inspired by the supplied visual reference.
+NestJS API and React operator workspace for financing-program capacity, invoice reservations, full release and version-aware treasury reconciliation. PostgreSQL is the source of truth; Kafka delivers treasury events with at-least-once delivery and idempotent database effects.
 
-## Open the workspace
+## Stack and architecture
+
+Node.js 24.22.1, TypeScript 5.9, NestJS 11, Prisma 7 with the PostgreSQL adapter, PostgreSQL 17, KafkaJS 2.2.4, Kafka 4.1, CASL, Pino, React, Vite, Jest, node:test, Playwright and Testcontainers. Both packages use committed npm lockfiles.
+
+`src/core/routes/{auth,user,capacity,treasury}/layers` follows BL/DA/CL boundaries: controllers call BL services; DA repositories own queries, SQL locks and tenant predicates; CL services coordinate financial transactions. Infrastructure lives in `src/core/providers`. Explicit feature imports and the three app import lists make dependencies visible. `check:architecture` checks placement, registration, layer dependencies and runtime cycles; HTTP tests also exercise DI.
+
+The web workspace provides Overview, Reservations, Activity and Treasury. It proxies the API and an internal local-only Kafka publisher. Tokens are never embedded in assets. Access tokens stay in memory; rotating refresh tokens use tab-scoped sessionStorage. Logout revokes the actual database session. The interface handles unknown command outcomes by retaining the idempotency key.
+
+## Start locally
+
+Requirements: Git, Docker Engine/Desktop with Linux containers and Docker Compose. The host does not need Node for the Compose workflow.
 
 ```sh
 docker compose run --build --rm tools npm run dev:prepare
@@ -10,274 +20,156 @@ docker compose up --build -d --wait
 docker compose run --rm -T tools npm run dev:credentials
 ```
 
-Open **http://localhost:8080** and sign in with the locally generated credentials. The preparation command adds missing demo credentials to ignored `.dev/runtime.env` without replacing existing secrets. The seed creates the demo operator with USER and TREASURY roles, preserving an existing account and password. No credentials or tokens are embedded in the frontend bundle.
+Open http://localhost:8080 and use the generated operator credentials. API: http://localhost:3000. PostgreSQL: localhost:15432. Kafka: localhost:19092. Published ports bind to loopback.
 
-The workspace contains Overview, Reservations, Activity and Treasury. Choose a program from the selector. Each program begins in `RECONCILIATION_REQUIRED` after a service start. In **Treasury → Local demo controls**, click **Apply fresh snapshot** and wait for **Applied** before creating new reservations. Viewing a page never creates financial operations. The second program is reconciled independently.
+Preparation creates distinct random signing secrets and local credentials in ignored `.dev/runtime.env`, preserving existing values. A one-shot tools container applies committed migrations and performs a non-destructive local seed before the API starts. PostgreSQL and Kafka readiness gate dependent containers. `docker compose stop` preserves volumes.
 
-The web container serves local static assets and proxies `/api/v1` to the existing API and `/demo-api` to the internal-only demo publisher. The API remains available on port 3000. The React package lives in `web/`, has a separate lockfile and uses plain CSS, self-hosted Inter and locally saved decorative images generated through the ChatGPT website. Its build and runtime use the existing pinned Node.js 24 base image.
+The two seeded USD programs belong to `demo-tenant` and start with a USD 10,000,000 limit. After startup/rebalance/outage, each needs a fresh snapshot. In **Treasury → Local demo controls**, select **Apply fresh snapshot** and wait for its durable **Applied** result. Pages never create financial operations merely by being viewed.
 
-### Browser session and commands
+The API runtime image contains production dependencies and compiled Prisma artifacts, runs as `node`, and starts with `node dist/main.js`. Separate `tools` image targets contain migration, test, seed and demo tooling. The local `demo-tools` publisher is not exposed on a host port; it verifies the actual session, treasury permission and seeded resource before publishing. Set `LOCAL_DEMO_ENABLED=false` to disable it. It is not a production treasury integration.
 
-The access token stays in memory and the rotating refresh token stays in tab-scoped `sessionStorage`. A shared rotation request handles concurrent expiry; page reload restores the session through the normal refresh endpoint. Successful logout revokes the PostgreSQL session and clears all workspace state. A failed infrastructure request to logout is reported without claiming revocation succeeded.
+## Configuration
 
-Money and versions remain decimal strings; amount validation and display calculations use bigint minor units. Cross-currency reservation displays the **saved** FX rate and source after creation. FX quotes are fixtures, not live market data. Reserve and release retain the same idempotency key after an unknown/network outcome. Retry the exact request to retrieve its durable result; changing the invoice or amount constitutes a new command.
+`.env.example` contains placeholders and explicitly local credentials. Never use its signing-secret placeholders in production. `.env`, `.env.*` and `.dev` are ignored and excluded from API builds. Set real secrets through the runtime environment; the API never runs migrations or seed automatically.
 
-Reads refresh after commands, on window focus and every ten seconds while visible. A resource never has overlapping background polls. Lists include loading, empty, forbidden, validation, business-conflict and infrastructure-error states. Financial operations are always authorized by the API, even when their controls are hidden or disabled in the browser.
+| Variable                                                | Meaning / default                                                     |
+| ------------------------------------------------------- | --------------------------------------------------------------------- |
+| `DATABASE_URL`                                          | Required PostgreSQL URL; containers use postgres:5432                 |
+| `JWT_ACCESS_SECRET`, `JWT_REFRESH_SECRET`               | Required distinct random strings, at least 32 characters              |
+| `JWT_ISSUER`, `JWT_AUDIENCE`                            | `capacity-dev`, `capacity-service`; set intentional production values |
+| `ACCESS_TOKEN_TTL_SECONDS`, `REFRESH_TOKEN_TTL_SECONDS` | 900 and 2592000                                                       |
+| `KAFKA_BROKERS`                                         | Comma-separated host:port list; local host localhost:19092            |
+| `KAFKA_TOPIC`, `KAFKA_GROUP_ID`                         | `treasury.capacity.v1`, `capacity-service-v1`                         |
+| `TREASURY_SOURCE`                                       | Trusted configured source identity; `local-treasury` locally          |
+| `PORT`, `LOG_LEVEL`, `NODE_ENV`                         | 3000, info, development; runtime image sets production                |
+| `API_URL`                                               | CLI/demo API origin; container tools use http://app:3000              |
+| `DEMO_EMAIL`, `DEMO_PASSWORD`                           | Local seed credentials generated by dev:prepare                       |
+| `LOCAL_DEMO_ENABLED`                                    | Local publisher switch; true in Compose                               |
 
-### Kafka demo from the interface
+For host development use Node from `.node-version`, install with `npm ci` and `npm ci --prefix web`, generate secrets with `npm run dev:prepare`, and configure database/broker addresses before migration and startup. `npm run build` always regenerates Prisma Client and builds current source; an existing `dist` is not evidence of a current build.
 
-The local `demo-tools` container is a Kafka producer with no database connection or direct financial writes. It checks the current session and treasury permission on the exact core API resource before publishing, accepts only the two seeded demo programs in `demo-tenant`, validates the existing event schema and rejects envelopes exceeding 2 MiB. It has no published host port. Set `LOCAL_DEMO_ENABLED=false` when starting Compose to disable publication; this tool is intended solely for local demonstration.
+## HTTP API
 
-1. Apply a fresh snapshot for the first program.
-2. Publish a new program limit, then reserve an invoice in EUR from Reservations.
-3. Capture a snapshot in Treasury. Create another reservation, then publish the captured snapshot.
-4. Observe **State version conflict** in the durable event history. The reservation remains present and new reservations are paused.
-5. Apply a fresh snapshot to recover, then release the invoice from its detail dialog.
+Resource, health, readiness and Swagger routes require a Bearer access JWT backed by an active PostgreSQL session. Sign-up/sign-in/refresh are the existing public authentication bootstrap endpoints. Registration cannot choose roles, tenant or client identity. Current roles and tenant are loaded from the database on every authenticated request. Tenant predicates apply even for APP_ADMIN.
 
-**Published** means Kafka acknowledged delivery. **Applied** and rejection reasons come from the committed PostgreSQL inbox. An unknown publication can be retried with the exact same stored event ID/envelope. **Check result** reads the inbox without publishing again. A reconnection alone does not restore readiness.
+All routes below use `/api/v1`. Success is `{ "success": true, "data": ... }`; paginated results add `meta`. Money and versions are strings. DTO/header failures return 422; errors use a numeric `error.code`, a public message and optional safe details. Unknown fields are rejected. A 204 response has no body.
 
-### Additional read APIs
+| Endpoint                                                        | Behavior                                                                     |
+| --------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `POST /auth/sign-up`, `POST /auth/sign-in`                      | Account bootstrap / token pair                                               |
+| `POST /auth/token/refresh`, `POST /auth/logout`                 | Atomic single-use refresh / session revocation                               |
+| `GET /users/me`, `PATCH /users/me`                              | Own-user read / authorized profile update                                    |
+| `GET /programs`                                                 | Tenant-scoped paginated program discovery                                    |
+| `GET /programs/:programId/capacity`                             | Available, reserved, over-limit, version and admission state                 |
+| `GET /programs/:programId/reservations`                         | Paginated reservation history; status/currency/invoiceId filters             |
+| `POST /programs/:programId/reservations`                        | Reserve invoice capacity                                                     |
+| `GET /programs/:programId/reservations/:reservationId`          | Public reservation and saved FX                                              |
+| `POST /programs/:programId/reservations/:reservationId/release` | Full release, body `{}`                                                      |
+| `GET /programs/:programId/movements`                            | Paginated signed movement ledger                                             |
+| `GET /internal/programs/:programId/reconciliation-view`         | Complete consistent snapshot input; treasury permission                      |
+| `GET /internal/programs/:programId/treasury-events`             | Redacted durable outcomes; optional eventId                                  |
+| `GET /health`                                                   | Authenticated HTTP liveness                                                  |
+| `GET /health/ready`                                             | Authenticated PostgreSQL + consumer readiness; 503 when unavailable/stopping |
 
-All routes require an active session and use the existing success/data/meta, numeric-error and 422-validation contracts. Collection queries accept `page` (default 1) and `perPage` (default 10, maximum 100). Tenant scope is enforced inside DA queries.
+Reserve and release require `Idempotency-Key` (1–128 letters/digits or `_ . : -`). Example reserve body:
 
-| Route after `/api/v1` | Access | Notes |
-| --- | --- | --- |
-| `GET /programs` | capacity read | Capacity summary and active count, ordered by ID |
-| `GET /programs/:programId/reservations` | capacity read | Includes terminal rows; optional `status`, `currency`, case-insensitive invoice substring `invoiceId`; newest first with ID tie-breaker |
-| `GET /programs/:programId/movements` | capacity read | Signed decimal-string deltas, newest state version first; internal actor/operation identity omitted |
-| `GET /internal/programs/:programId/treasury-events` | treasury reconcile | Optional UUID `eventId`; newest first with ID tie-breaker; no payload, raw bytes, coordinates or fingerprints |
-
-Program discovery reads all collection pages; the selector has no fixed 100-program truncation. Snapshot export uses the complete consistent reconciliation view and never reconstructs it from a paginated reservations list.
-
-### Frontend verification
-
-```sh
-npm ci --prefix web
-npm --prefix web run typecheck
-npm --prefix web run lint
-npm --prefix web test
-npm --prefix web run build
-npx --prefix web playwright install chromium
-docker compose build app web
-npm run web:test
+```json
+{ "invoiceId": "invoice-unique-123", "amount": "1250.50", "currency": "EUR" }
 ```
 
-`web:test` owns an ephemeral `app_test_web` database, a Kafka broker, and separate Node.js 24 API/demo/web containers. It never resets development Compose databases. Browser scenarios cover real login/refresh/logout, roles and tenant isolation, FX reserve/release, a lost response followed by the same idempotency key, error presentation, actual Kafka updates, stale snapshots and recovery. The harness also checks financial aggregates against reservations and the movement ledger, idempotency and inbox results. Targeted HTTP fault injection covers transport failures; ordinary financial and Kafka scenarios use the actual services.
+USER can read capacity and write reservations; READ_ONLY can read capacity; TREASURY can read capacity and access treasury views. Foreign/missing resources return 404, accessible resources without permission return 403. Swagger at `/docs`, `/docs-json` and `/docs-yaml` also requires a Bearer token. `openapi.json` is a checked-in export; regenerate it with `npm run openapi` after changing HTTP contracts.
 
-Responsive checks cover 1440, 1280, 768 and 390 px, keyboard dialog focus and local asset loading. Set `WEB_SCREENSHOT_DIR` to save visual verification screenshots. Browser dependencies run on the test host; application containers use Node.js 24. Docker Engine must be running. For local frontend development use `npm --prefix web run dev` with the API on port 3000 and explicitly configured access to demo-tools; the default complete workflow remains Compose on port 8080.
+## Financial consistency
 
-## Run locally
+- Money uses PostgreSQL BIGINT and TypeScript bigint minor units. Supported scales: JPY 0; USD/EUR/GBP 2; KWD 3. Reject negative/zero invoices, excess decimals, scientific notation and overflow.
+- FX means program major units per invoice major unit. Exact decimal conversion rounds upward to consumed capacity. Store the quote on reservation; release and replay never quote again. Current rates are fixtures, not market data.
+- READ COMMITTED transactions lock the program row with `SELECT ... FOR UPDATE`. Idempotency/inbox claim precedes program locking. Reservation, aggregate, ledger and durable result commit together. Boundaries are 2-second lock, 8-second statement and 10-second transaction timeouts. Only classified serialization/deadlock failures receive bounded retries.
+- Idempotency scope is tenant + stable database client ID + key. A normalized fingerprint binds the method/resource/body. Successes and final business refusals replay their original result; transient failures roll back. Retry an unknown outcome with exactly the same key and request.
+- Concurrent reserves cannot consume more than available capacity. Release is full and cannot apply twice. Terminal invoice uniqueness remains tenant-wide. SQL constraints, composite foreign keys and immutable-history triggers provide additional guards.
+- `reservedMinor` equals the active reservation sum and signed ledger sum. Availability is max(0, limit − reserved). Treasury may lower the limit below existing reservations; releases remain possible while new reservations are blocked.
+- AsyncLocalStorage isolates transactions. `$tx` opens one; `$txe` reuses it; explicit repository clients never mutate singleton state.
 
-Use Docker Desktop with Linux containers. From this directory:
+## Kafka and reconciliation
+
+Default topic: `treasury.capacity.v1`; key: `tenantId:programId`. Events use schemaVersion 1, UUID eventId, tenantId, programId, string treasuryRevision and occurredAt. The two types are `ProgramLimitUpdated` (currency/limit) and `ProgramStateSnapshot` (currency/limit/baseStateVersion/full active reservations). Exact schemas are in `src/core/routes/treasury/types/treasury-event.types.ts`.
+
+Processing is sequential per partition, with up to three partitions concurrent. Automatic commit/batch resolution are disabled. The database first commits application, rejection or quarantine; only then does the consumer commit offset + 1. Failure between the two safely redelivers through inbox deduplication. Database failure does not acknowledge the failed or later message. This is at-least-once delivery with idempotent financial effects.
+
+Incremental revisions must be consecutive in READY. Gaps or conflicting content require reconciliation. Highest-seen and last-applied revisions are distinct. Malformed events are durably quarantined, without logging raw payloads.
+
+The reconciliation view is one read-only REPEATABLE READ snapshot. The treasury snapshot must reflect that exact version and the accounted operations, retain complete monetary/FX metadata, and use a new revision above highestSeen. A stale baseStateVersion cannot overwrite newer financial operations. A valid snapshot atomically restores missing active rows, closes omitted rows, recalculates the aggregate and restores READY. Terminal invoices cannot be revived.
+
+Startup, consumer failure, rebalance or 15 seconds without successful heartbeats closes admission and requires a fresh snapshot. Reconnection alone does not restore program readiness. Reads and full releases remain available with PostgreSQL. The container TCP healthcheck is liveness; protected readiness additionally checks PostgreSQL, consumer connectivity and shutdown. Readiness does not assert that every program has reconciled or that Kafka has zero lag.
+
+## Deterministic demo
 
 ```sh
-docker compose run --build --rm tools npm run dev:prepare
-docker compose up --build -d --wait
-# Optional CLI-only demonstration:
 docker compose run --rm tools npm run demo
 ```
 
-Preparation creates two distinct signing secrets in ignored `.dev/runtime.env` and preserves an existing file. Compose mounts it read-only into runtime containers. A separate one-shot migration job runs the checked-in migrations and non-destructive seed before starting `node dist/main.js`. PostgreSQL and Kafka use persistent volumes; `docker compose stop` preserves data.
+The demo uses the first seeded program and unique invoice/event/idempotency identifiers. It reads capacity, reserves USD, verifies identical-key replay without a version change, reserves EUR 1,250.50 as USD 1,375.55, rejects a stale snapshot, recovers with a fresh snapshot, processes a Kafka limit event and releases both reservations using their saved FX. It reapplies the current limit instead of changing the program's policy. It verifies the exact durable event outcomes and restoration of initial availability, and exits nonzero on failure.
 
-The seed creates two USD programs for `demo-tenant` with a USD 10,000,000 limit, without overwriting existing programs. Initial state requires reconciliation. The demo issues a real PostgreSQL-backed session, publishes the initial snapshot, updates the limit, reserves EUR 1,250.50 as USD 1,375.55, demonstrates a stale snapshot conflict and fresh recovery, then releases the reservation. Each run uses new invoice/event IDs and deliberately sets the first demo program's limit to USD 10,000,000.
+Run it against the local seeded environment without competing operations. It preserves existing reservations and never deletes history. A failed run can leave its own reservation active; inspect it and release through the normal authenticated command. Existing UI controls independently support the second seeded program.
 
-Host addresses: API `http://localhost:3000`, PostgreSQL `localhost:15432`, Kafka `localhost:19092`. Containers use `postgres:5432` and `kafka:9092`. Host ports bind to loopback. Local credentials are demonstration credentials.
+## Tests and checks
 
-Every process start, detected consumer failure or rebalance requires a fresh snapshot. Run the demo after a restart to recover the first program. The second remains blocked until independently reconciled.
-
-## Architecture
-
-The core was generated using the installed skill's `create-project.mjs`, then integrated into the existing project. Its transaction, HTTP, Auth/Users and CASL implementations are the basis of this application.
-
-```text
-src/
-  main.ts
-  config/environment.config.ts
-  constants/ decorators/ filters/ guards/ helpers/ interfaces/ interceptors/
-  core/
-    app/
-      app.module.ts
-      create-application.ts
-      app-bl-imports.ts
-      app-da-imports.ts
-      app-cl-imports.ts
-    providers/
-      prisma/ token/ casl/ fx/ kafka/
-    routes/
-      auth/ user/ capacity/ treasury/
-        dto/ entities/
-        layers/
-          <feature>-bl/
-          <feature>-da/
-          <feature>-cl/     # capacity and treasury coordination
-```
-
-Controllers call BL services. BL services express use cases, and CL services coordinate multi-write reserve/release, idempotency and treasury reconciliation. DA repositories own Prisma model queries, SQL, row locking and tenant predicates. Module imports are explicit within each feature; all layers also register in the three app import arrays. Dependencies use constructor DI, with no manually assembled production repositories or hidden modules inside the bootstrap.
-
-Only Config, Prisma and CASL root options are global. Auth and Users use BL/DA; simple operations have no empty CL layer. FX and Kafka are injectable providers. ESM aliases resolve source paths for TypeScript and `dist` paths for Node.
-
-### Transactions
-
-`PrismaService.$tx` opens an interactive transaction and rejects nested `$tx`; `$txe` reuses an explicit or ambient client. AsyncLocalStorage isolates concurrent contexts. `repository.$` follows the current context, and `repository.tx(explicitClient)` returns a separate view without mutating the singleton.
-
-Financial commands additionally use `FinancialTransactionService`: READ COMMITTED, program `SELECT … FOR UPDATE`, 2-second lock timeout, 8-second statement timeout, 10-second transaction ceiling and up to three attempts for classified deadlock/serialization conflicts. Financial write methods require the explicit transaction client. Lock order remains idempotency/inbox → program → reservations in stable ID order. FX is obtained before the financial transaction.
-
-The consistent reconciliation view uses read-only REPEATABLE READ. Audit, aggregates, reservations and idempotency/inbox outcomes commit atomically. Savepoints ensure a cross-program invoice race cannot partially apply a snapshot.
-
-## HTTP v2 contract
-
-All versioned endpoints use `/api/v1`. Success is `{ "success": true, "data": ... }`; paginated results use explicit `ApiResult` and add `meta`. False, zero and empty strings survive serialization. `Serialize(Entity)` and class-transformer expose only public response properties. A 204 response is empty.
-
-Errors use `{ "success": false, "error": { "code": 409100, "message": "...", "details": { "reason": "INSUFFICIENT_CAPACITY", "requestId": "..." } } }`. DTO failures return HTTP 422 / code 422000 with field paths. Unknown fields, invalid amounts/scales, role/tenant injection and missing idempotency headers are rejected. Domain failures retain their HTTP status; unexpected exceptions return a safe 500.
-
-| Endpoint after `/api/v1` | Required access | Success |
-| --- | --- | --- |
-| `POST /auth/sign-up` | Public account bootstrap | 201, public User |
-| `POST /auth/sign-in` | Credentials | 200, token pair |
-| `POST /auth/token/refresh` | Valid single-use refresh token | 200, new pair |
-| `POST /auth/logout` | Active access session | 204 |
-| `GET /users/me` | Own user, CASL read | 200 |
-| `PATCH /users/me` | Own user, CASL update | 200 |
-| `GET /programs/:programId/capacity` | Tenant capacity read | 200 |
-| `POST /programs/:programId/reservations` | Tenant reservation write | 201 |
-| `GET /programs/:programId/reservations/:reservationId` | Tenant capacity read | 200 |
-| `POST /programs/:programId/reservations/:reservationId/release` | Tenant reservation write | 200 |
-| `GET /internal/programs/:programId/reconciliation-view` | Tenant treasury permission | 200 |
-| `GET /health` | Active access session | 200 |
-
-`/docs`, `/docs-json` and `/docs-yaml` also require a valid session Bearer token, including static Swagger assets. Use a Bearer-capable client or the checked-in `openapi.json` for documentation. Container health checks remain local TCP checks. The public exceptions are the core's sign-up/sign-in/refresh bootstrap endpoints.
-
-Reserve accepts `invoiceId`, decimal-string `amount`, and `currency`. Release accepts `{}` and always releases the stored amount. Commands require `Idempotency-Key`, 1–128 characters from letters, digits, `_ . : -`.
-
-Selected errors:
-
-| HTTP | Numeric code | Meaning |
-| --- | --- | --- |
-| 401 | 401000 / 401001 | Unauthenticated / invalid credentials |
-| 403 | 403000 | Missing permission on an accessible resource |
-| 404 | 404000 / 404001 | Missing/foreign resource / missing user |
-| 409 | 409001 | Duplicate account email |
-| 409 | 409100 | Insufficient capacity |
-| 409 | 409101 | Invoice already financed |
-| 409 | 409102 | Idempotency key reused with a different request |
-| 409 | 409103 | Fresh reconciliation required |
-| 409 | 409104 / 409105 | Active-count limit / exhausted version |
-| 422 | 422000 | DTO/header validation |
-| 503 | 503000 / 503100 | Transient service / FX unavailability |
-
-### Auth, sessions and CASL
-
-Sign-up accepts normalized email/password and optional first/last name. Passwords use bcrypt with a 72-byte UTF-8 ceiling. The database assigns USER; registration cannot choose roles, tenant or API client identity. New registrations receive a server-generated tenant and client ID. Program provisioning remains a seed/integration responsibility.
-
-Access and refresh JWTs use separate HS256 secrets, issuer/audience checks, expiration, `sub`, `sid`, token type and unique `jti`. Defaults: access 15 minutes, refresh 30 days. Sessions store only a refresh hash, expiry and revocation state in PostgreSQL. Atomic conditional refresh rotation permits one winner under replay/race. Logout revokes the session and both token types. Every authenticated request loads the active session and current roles/tenant/client ID from PostgreSQL.
-
-USER permits own-user access, tenant capacity reads and reservation writes. READ_ONLY permits capacity reads; TREASURY permits capacity reads and reconciliation. APP_ADMIN gets the core's CASL manage permission; financial DA predicates still enforce the current tenant. Resource hooks check the actual program/reservation: foreign or absent resources return 404, missing rights on an accessible resource return 403. JWT claims cannot override database roles or tenant scope.
-
-The local CLI provisions a development account/session using configured PostgreSQL and secrets. Its arguments remain tenant, comma-separated permissions and stable client ID:
+Use Node 24.22.1 and a running Docker Engine. Integration, migration, smoke and browser harnesses own disposable `app_test_*` databases/containers. They never reset a configured development database. Missing Docker/configuration causes failure, not a skipped green suite.
 
 ```sh
-docker compose run --rm -T tools node scripts/dev.mjs token
-docker compose run --rm -T tools node scripts/dev.mjs token demo-tenant capacity:read read-only-client
+npm ci
+npm ci --prefix web
+npm run format:check
+npm run lint
+npm --prefix web run lint
+npm run db:generate
+npm run typecheck
+npm --prefix web run typecheck
+npm run check:architecture
+npm run test:coverage
+npm run test:core
+npm run test:integration
+npm run test:migrations
+docker build --target runtime -t program-capacity-service:local .
+docker build --target tools -t program-capacity-tools:local .
+docker build -t program-capacity-web:local web
+npm run test:smoke
+npm --prefix web test
+npm --prefix web run build
+npx --prefix web --no-install playwright install --with-deps chromium
+npm run web:test
 ```
 
-A given tenant/client maps to a stable database identity. The CLI is an administrative development tool, requiring local database access; there is no HTTP token bypass.
+`npm test` builds and runs all core/financial suites. Coverage reports use separate unit/integration artifacts with no arbitrary percentage gate. `test:migrations` checks clean deployment, upgrade with representative financial/session data, repeated deploy, drift and raw SQL guards. `test:smoke` runs the final API image without source mounts/dev tools and proves auth, PostgreSQL, Kafka, idempotency, FX, reconciliation, ledger and SIGTERM/restart. Set APP_IMAGE/TOOLS_IMAGE/WEB_IMAGE to use explicit built tags. `web:test` covers browser login/rotation/logout, roles/tenant boundaries, commands, Kafka recovery, network retries and responsive layouts.
 
-### PowerShell example
-
-Run the demo once to reconcile the program, then:
-
-```powershell
-$token = docker compose run --rm -T tools node scripts/dev.mjs token
-$headers = @{ Authorization = "Bearer $token"; 'Idempotency-Key' = [guid]::NewGuid().ToString() }
-$base = 'http://localhost:3000/api/v1/programs/11111111-1111-4111-8111-111111111111'
-$body = @{ invoiceId = [guid]::NewGuid().ToString(); amount = '1250.50'; currency = 'EUR' } | ConvertTo-Json
-$reservation = (Invoke-RestMethod "$base/reservations" -Method Post -Headers $headers -ContentType 'application/json' -Body $body).data
-Invoke-RestMethod "$base/capacity" -Headers $headers
-$headers['Idempotency-Key'] = [guid]::NewGuid().ToString()
-Invoke-RestMethod "$base/reservations/$($reservation.id)/release" -Method Post -Headers $headers -ContentType 'application/json' -Body '{}'
-```
-
-## Financial semantics
-
-Money uses PostgreSQL BIGINT / TypeScript bigint minor units; JSON amounts and versions are strings. Scales: JPY 0, USD/EUR/GBP 2, KWD 3. Amount parsing rejects scientific notation, negative/zero invoice amounts, excess decimals and overflow.
-
-FX direction is program major units per invoice major unit. The reserved amount is `ceil(invoiceMinor × rate × 10^programScale / 10^invoiceScale)`, using exact decimal arithmetic. FX is fixed on reservation; release never quotes again. Identity FX bypasses the provider. Fixture rates into USD are EUR 1.10, GBP 1.25, JPY 0.0067 and KWD 3.25. Quotes expire after 60 seconds. Fixtures are not market rates; unsupported pairs fail explicitly.
-
-`Program.reservedMinor` equals the active reservation sum. Availability is `max(0, limit − reserved)` and over-limit is `max(0, reserved − limit)`. Treasury can lower a limit below existing reserves; new reserve fails and release remains available. Tenant-wide invoice uniqueness persists after RELEASED or RECONCILED_CLOSED. Database checks, composite foreign keys and history triggers protect financial relationships and append-only movements.
-
-Idempotency scope remains tenant + stable database client ID + key. Fingerprints include method, action/resource and normalized body. Successes and final business refusals are durable; transient failures roll back. Replay returns original content, including historical state, without FX or another financial effect. Current state comes from GET. Numeric HTTP errors and the success envelope are applied at the HTTP boundary; stored financial outcomes remain intact.
-
-## Treasury protocol
-
-Topic `treasury.capacity.v1`, key `tenantId:programId`. Source identity comes from integration configuration. The event schema lives in `core/routes/treasury/types/treasury-event.types.ts` and is unchanged by the architecture migration:
-
-```json
-{
-  "eventId": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
-  "schemaVersion": 1,
-  "type": "ProgramLimitUpdated",
-  "tenantId": "demo-tenant",
-  "programId": "11111111-1111-4111-8111-111111111111",
-  "treasuryRevision": "2",
-  "occurredAt": "2026-10-26T12:00:00.000Z",
-  "payload": { "currency": "USD", "limit": "10000000.00" }
-}
-```
-
-An incremental revision must equal `lastApplied + 1` in READY. Gaps and conflicting event/revision content require reconciliation; older covered revisions never roll back state. Highest-seen revisions are tracked separately, including valid unapplied events. Malformed messages and conflicting deliveries are quarantined durably with original bytes and Kafka coordinates.
-
-For recovery, obtain the protected reconciliation view. Its version, limit, revisions and complete active reservation list share one REPEATABLE READ snapshot. Build the full treasury snapshot from that exact view and accounted local operations; preserve monetary and FX metadata. Publish a fresh event ID and revision above highestSeen:
-
-```json
-{
-  "eventId": "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
-  "schemaVersion": 1,
-  "type": "ProgramStateSnapshot",
-  "tenantId": "demo-tenant",
-  "programId": "11111111-1111-4111-8111-111111111111",
-  "treasuryRevision": "3",
-  "occurredAt": "2026-10-26T12:01:00.000Z",
-  "payload": { "currency": "USD", "limit": "10000000.00", "baseStateVersion": "0", "reservations": [] }
-}
-```
-
-Values above are illustrative: use actual view values. Each nonempty row is the complete reservation DTO from the view with ACTIVE status and null closedAt. An empty list means no active reservations. Attaching a fresh version to an independently prepared old snapshot violates the protocol.
-
-Under the program lock, the service validates all rows and exact baseStateVersion. A conflict commits only rejection/synchronization metadata and preserves financial state. A successful snapshot restores missing active rows, closes omitted rows, recomputes the aggregate and sets READY. Terminal invoices cannot be revived or their FX rewritten.
-
-Snapshots are bounded to 1,000 active rows and 2 MiB UTF-8 bytes; reserve enforces the active-count ceiling and views are never truncated. Kafka allows 3 MiB records; consumer fetch bounds are 3 MiB per partition and 6 MiB total. Larger programs require a staging protocol. Transactions retain the 10-second ceiling.
-
-Processing is sequential per partition, with up to three partitions in parallel. Auto-commit and automatic batch resolution are disabled. A durable PostgreSQL application/rejection/quarantine precedes explicit commit of the next offset. Failed database work cannot acknowledge the failed or later message. A crash between DB commit and offset commit safely replays via inbox deduplication: at-least-once delivery plus idempotent PostgreSQL application.
-
-Readiness closes on known disconnect/crash/rebalance or after 15 seconds without successful heartbeats. Reconnect alone does not clear required reconciliation. Reads and full release remain available when the database is available. Last-applied time is diagnostic and does not prove absence of Kafka lag.
-
-## Migration from the original layout
-
-The first two migrations are unchanged. Migration `202610260003_auth_core` adds only User/Session/Role storage. Existing financial rows, audit, idempotency results and inbox/quarantine entries are preserved. Startup changes synchronization metadata as before. Financial state was compared by row counts and hashes before and after the local migration.
-
-HTTP clients must adopt `/api/v1`, success/data, numeric errors and DTO 422. Old RS256 development JWTs are replaced by active-session access tokens; old PEM files are unused and remain ignored. The local tenant/client arguments map to the same client ID, allowing previous idempotency results to replay under the new session model. New public users receive independent server-generated tenant/client IDs. No legacy-route aliases are retained.
-
-Task-specific adaptations to the core: health/docs require authentication; issuer/audience/mandatory expiration checks are retained; CASL hooks preserve financial 404 tenant isolation; financial writes keep explicit clients and bounded row-lock transactions. These adaptations are covered by behavioral tests.
-
-## Verification
+To run backend harnesses with the bundled Node version on Docker Desktop:
 
 ```sh
-docker compose run --rm tools npm run typecheck
-docker compose run --rm tools npm run lint
-docker compose run --rm tools npm run check:architecture
-docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -e TESTCONTAINERS_HOST_OVERRIDE=host.docker.internal program-capacity-service:local npm test
+docker run --rm --user 0 -v /var/run/docker.sock:/var/run/docker.sock -e TESTCONTAINERS_HOST_OVERRIDE=host.docker.internal program-capacity-tools:local npm test
 ```
 
-On native Linux omit the host override or set a reachable Docker host. With Node.js 24 installed locally: `npm ci`, `npm run build`, `npm test`. `npm test` owns fresh PostgreSQL containers named `app_test_*`, applies migrations only there, runs the included core tests with TEST_DATABASE_URL, then runs the preserved financial suites against separate disposable PostgreSQL and Kafka. It never resets a supplied development database. `npm run test:unit`, `npm run test:integration` and `npm run test:core` are available separately.
+Root here grants the test harness access to the Docker socket; the actual API remains non-root. On native Linux omit the Docker Desktop host override. The Docker socket is administrative access; expose it only to trusted local test tooling.
 
-Coverage includes HTTP contracts, DTO paths, hidden fields, pagination/falsy/204/streams, Auth refresh races and logout, current database roles, CASL tenant resources, ambient/nested/explicit-client transactions, independent-client financial concurrency, full rollback, idempotency replay, FX rounding/scales, snapshot conflicts/recovery/bounds, Kafka quarantine/offset failure/restart and consumer outage. The architecture checker checks paths, registrations, layer dependencies and runtime import cycles; runtime tests additionally validate DI and behavior.
+## Production image
 
-Regenerate the checked-in OpenAPI with `npm run openapi` after building and configuring the environment, or export it from the tools container with `OPENAPI_OUTPUT` pointing to a writable bind mount.
+Build the runtime and tools targets from the intended source revision. Run migrations through the tools image as a separate controlled step; the API runtime never seeds or migrates automatically. Supply private runtime configuration, start the API image and check protected readiness before reconciling programs.
 
-## Limits and production work
+Verification and release workflows are added in the next stage. Reviewed, expiring Debian package assessments are documented in [security assessments](docs/security.md).
 
-The service is the sole admission writer for managed capacity. Upstream approves invoices; there is no payment processing or invoice authenticity check. Releases are full only; refinancing, partial repayments and program currency changes remain outside v1 business scope. Auth/Users are the new core's account/session baseline; broader IAM and tenant provisioning are not implemented.
+## Requirements traceability
 
-Treasury must support the version-aware view/snapshot protocol. Continuous concurrent changes can require repeated reconciliation; an independent treasury needs a separate watermark/replay design. One application instance owns local consumer readiness; replica-wide coordination is additional work.
+| Requirement                              | Implementation                                                            | Verification                                             |
+| ---------------------------------------- | ------------------------------------------------------------------------- | -------------------------------------------------------- |
+| Auth / tenant isolation                  | PostgreSQL sessions, JWT purpose/issuer/audience, CASL, scoped DA queries | Core HTTP, financial HTTP, dashboard and browser tests   |
+| Capacity concurrency / no double release | Program row lock, atomic aggregate/ledger/reservation writes              | Financial concurrency and shutdown tests                 |
+| Durable idempotency / rollback           | Scoped request claims, normalized fingerprints, one transaction           | Duplicate/race/fault/replay tests and image smoke        |
+| Money / fixed FX                         | bigint minor units, exact decimals, saved FX                              | Money/FX unit, integration and smoke tests               |
+| Kafka replay / commit ordering           | Durable inbox/quarantine before explicit offset commit                    | Real broker redelivery, database/broker failure tests    |
+| Stale snapshot safety / recovery         | Consistent view, state-version comparison, revision protocol              | Snapshot race/conflict/recovery and browser tests        |
+| Migration reliability                    | Forward-only FK correction, deploy/diff and SQL guards                    | Clean/upgrade/repeat migration harness and image startup |
+| Operational readiness                    | Protected readiness, safe structured logs, bounded shutdown               | Core operations tests and SIGTERM/restart smoke          |
 
-Production needs real FX, managed signing-secret rotation, Kafka TLS/SASL/ACLs, separate DB migration/runtime roles, retention/quarantine operations, backups, monitoring, resource limits and a reduced runtime image. Jest ESM uses experimental VM modules; KafkaJS 2.2.4 can emit its upstream TimeoutNegativeWarning during request-queue scheduling. Warnings remain visible in test output.
+## Deliberate limits
+
+One application instance owns consumer readiness; replica-wide coordination is not implemented. Snapshots are bounded to 1,000 active reservations and 2 MiB; larger programs need a staging protocol. FX is fixture-only. Releases are full; partial repayment/refinancing, currency changes and tenant provisioning are outside scope. The service is the admission writer, not a payment processor or invoice-authenticity system.
+
+Production still needs environment-specific Kafka TLS/SASL/ACLs, real FX, secret rotation, separate database migration/runtime roles, retention/backups, monitoring and a real deployment target. There is no Kubernetes, Terraform or Prometheus/Grafana stack. The pinned KafkaJS version can emit its upstream TimeoutNegativeWarning in tests; warnings are not suppressed. GitHub execution and registry publication can only be confirmed after actual remote runs.

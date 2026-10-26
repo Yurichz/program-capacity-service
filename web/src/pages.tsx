@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState, type FormEvent } from "react";
-import { Link } from "react-router-dom";
-import { api, ApiError, command, message } from "./api";
-import { minor, money, scales, utilization } from "./money";
-import { useResource } from "./use-resource";
+import { useEffect, useRef, useState, type FormEvent } from 'react';
+import { Link } from 'react-router-dom';
+import { api, ApiError, command, message } from './api';
+import { minor, money, scales, utilization } from './money';
+import { useResource } from './use-resource';
 import {
   Badge,
   date,
@@ -15,21 +15,14 @@ import {
   Panel,
   reason,
   ReservationStatus,
-} from "./ui";
-import type { Workspace } from "./App";
-import type {
-  EventEnvelope,
-  Movement,
-  Program,
-  Reservation,
-  TreasuryEvent,
-  View,
-} from "./types";
+} from './ui';
+import type { Workspace } from './App';
+import type { EventEnvelope, Movement, Program, Reservation, TreasuryEvent, View } from './types';
 
 const base = (id: string) => `/api/v1/programs/${id}`;
 const internal = (id: string) => `/api/v1/internal/programs/${id}`;
 function canWrite(roles: string[]) {
-  return roles.includes("USER") || roles.includes("APP_ADMIN");
+  return roles.includes('USER') || roles.includes('APP_ADMIN');
 }
 function SyncNotice({ program }: { program: Program }) {
   return program.acceptingReservations ? null : (
@@ -37,13 +30,13 @@ function SyncNotice({ program }: { program: Program }) {
       <Icon name="alert" size={19} />
       <span>
         <strong>
-          {program.syncStatus !== "READY"
-            ? "A fresh reconciliation is required."
-            : "New reservations are currently paused."}
-        </strong>{" "}
-        {program.syncStatus !== "READY"
-          ? "Open Treasury to reconcile this program. Reads and releases remain available."
-          : "Check available capacity, the active reservation limit, and the treasury connection."}
+          {program.syncStatus !== 'READY'
+            ? 'A fresh reconciliation is required.'
+            : 'New reservations are currently paused.'}
+        </strong>{' '}
+        {program.syncStatus !== 'READY'
+          ? 'Open Treasury to reconcile this program. Reads and releases remain available.'
+          : 'Check available capacity, the active reservation limit, and the treasury connection.'}
       </span>
     </div>
   );
@@ -85,11 +78,10 @@ function ReservationTable({
                 </div>
               </td>
               <td className="numeric">
-                {money(r.amount, r.currency)}{" "}
-                <span className="currency-code">{r.currency}</span>
+                {money(r.amount, r.currency)} <span className="currency-code">{r.currency}</span>
               </td>
               <td className="numeric">
-                <strong>{money(r.reservedAmount, r.programCurrency)}</strong>{" "}
+                <strong>{money(r.reservedAmount, r.programCurrency)}</strong>{' '}
                 <span className="currency-code">{r.programCurrency}</span>
               </td>
               <td>
@@ -118,15 +110,15 @@ function MovementList({ rows }: { rows: Movement[] }) {
       {rows.map((r) => (
         <div className="movement-row" key={r.id}>
           <span
-            className={`movement-icon ${r.reservedDelta.startsWith("-") ? "movement-green" : ""}`}
+            className={`movement-icon ${r.reservedDelta.startsWith('-') ? 'movement-green' : ''}`}
           >
             <Icon
               name={
-                r.reason.includes("RECONCIL")
-                  ? "shield"
-                  : r.limitDelta !== "0.00"
-                    ? "wallet"
-                    : "file"
+                r.reason.includes('RECONCIL')
+                  ? 'shield'
+                  : r.limitDelta !== '0.00'
+                    ? 'wallet'
+                    : 'file'
               }
               size={18}
             />
@@ -138,9 +130,9 @@ function MovementList({ rows }: { rows: Movement[] }) {
             </small>
           </div>
           <span className="movement-amount">
-            {r.reservedDelta !== "0.00"
-              ? `${r.reservedDelta.startsWith("-") ? "" : "+"}${money(r.reservedDelta, r.currency)}`
-              : `${r.limitDelta.startsWith("-") || minor(r.limitDelta, r.currency) === 0n ? "" : "+"}${money(r.limitDelta, r.currency)}`}
+            {r.reservedDelta !== '0.00'
+              ? `${r.reservedDelta.startsWith('-') ? '' : '+'}${money(r.reservedDelta, r.currency)}`
+              : `${r.limitDelta.startsWith('-') || minor(r.limitDelta, r.currency) === 0n ? '' : '+'}${money(r.limitDelta, r.currency)}`}
             <small>{r.currency}</small>
           </span>
         </div>
@@ -154,61 +146,53 @@ export function Overview(workspace: Workspace) {
     `${base(p.programId)}/reservations?perPage=5`,
     revision,
   );
-  const movements = useResource<Movement[]>(
-    `${base(p.programId)}/movements?perPage=4`,
-    revision,
-  );
+  const movements = useResource<Movement[]>(`${base(p.programId)}/movements?perPage=4`, revision);
   const used = utilization(p.reserved, p.limit, p.currency);
   const stats = [
     {
-      title: "Program limit",
+      title: 'Program limit',
       value: p.limit,
-      icon: "wallet",
-      note: "Your total funding capacity",
-      style: "blue",
+      icon: 'wallet',
+      note: 'Your total funding capacity',
+      style: 'blue',
     },
     {
-      title: "Reserved capacity",
+      title: 'Reserved capacity',
       value: p.reserved,
-      icon: "stack",
+      icon: 'stack',
       note: `${p.activeReservationCount ?? 0} active reservations`,
-      style: "violet",
+      style: 'violet',
     },
     {
-      title: "Available to reserve",
+      title: 'Available to reserve',
       value: p.available,
-      icon: "check",
-      note: "Ready for your next invoice",
-      style: "green",
+      icon: 'check',
+      note: 'Ready for your next invoice',
+      style: 'green',
     },
     {
-      title: "Over limit",
+      title: 'Over limit',
       value: p.overLimit,
-      icon: "alert",
+      icon: 'alert',
       note:
         minor(p.overLimit, p.currency) === 0n
-          ? "You’re within your limit"
-          : "Reserved capacity exceeds limit",
-      style: "orange",
+          ? 'You’re within your limit'
+          : 'Reserved capacity exceeds limit',
+      style: 'orange',
     },
   ];
   return (
     <>
       <section className="welcome-banner">
         <div>
-          <span className="welcome-label">
-            A LITTLE MORE CLARITY, EVERY DAY
-          </span>
+          <span className="welcome-label">A LITTLE MORE CLARITY, EVERY DAY</span>
           <h2>
-            Hello, {user.firstName ?? user.email.split("@")[0]}{" "}
-            <span aria-hidden="true">👋</span>
+            Hello, {user.firstName ?? user.email.split('@')[0]} <span aria-hidden="true">👋</span>
           </h2>
           <p>Your next move starts with a clear picture.</p>
           <div className="welcome-status">
             <span className="welcome-status-dot" />
-            {p.syncStatus === "READY"
-              ? "Program reconciled"
-              : "Reconciliation needed"}
+            {p.syncStatus === 'READY' ? 'Program reconciled' : 'Reconciliation needed'}
             <span className="welcome-divider" />
             State version {p.stateVersion}
           </div>
@@ -244,10 +228,9 @@ export function Overview(workspace: Workspace) {
               <strong>{money(s.value, p.currency)}</strong>
             </div>
             <div className="stat-note">
-              {s.title === "Over limit" &&
-                minor(p.overLimit, p.currency) === 0n && (
-                  <span className="tiny-green-dot" />
-                )}
+              {s.title === 'Over limit' && minor(p.overLimit, p.currency) === 0n && (
+                <span className="tiny-green-dot" />
+              )}
               {s.note}
             </div>
           </section>
@@ -258,8 +241,8 @@ export function Overview(workspace: Workspace) {
           title="Capacity at a glance"
           subtitle="Your funding, clearly allocated"
           action={
-            <Badge tone={p.syncStatus === "READY" ? "green" : "orange"}>
-              {p.syncStatus === "READY" ? "In sync" : "Action needed"}
+            <Badge tone={p.syncStatus === 'READY' ? 'green' : 'orange'}>
+              {p.syncStatus === 'READY' ? 'In sync' : 'Action needed'}
             </Badge>
           }
         >
@@ -316,14 +299,12 @@ export function Overview(workspace: Workspace) {
           </div>
           <div className="connection-state">
             <strong>
-              {p.syncStatus === "READY"
-                ? "Everything is in sync"
-                : "Let’s get you in sync"}
+              {p.syncStatus === 'READY' ? 'Everything is in sync' : 'Let’s get you in sync'}
             </strong>
             <p>
-              {p.syncStatus === "READY"
-                ? "Your program reflects the latest applied treasury state."
-                : "Apply a fresh treasury snapshot to enable new reservations."}
+              {p.syncStatus === 'READY'
+                ? 'Your program reflects the latest applied treasury state.'
+                : 'Apply a fresh treasury snapshot to enable new reservations.'}
             </p>
           </div>
           <div className="connection-footer">
@@ -331,8 +312,7 @@ export function Overview(workspace: Workspace) {
               Last treasury update
               <strong>{date(p.lastAppliedTreasuryAt)}</strong>
             </span>
-            {(user.roles.includes("TREASURY") ||
-              user.roles.includes("APP_ADMIN")) && (
+            {(user.roles.includes('TREASURY') || user.roles.includes('APP_ADMIN')) && (
               <Link to="/treasury" className="table-action">
                 View treasury <Icon name="arrow" size={14} />
               </Link>
@@ -351,11 +331,8 @@ export function Overview(workspace: Workspace) {
           }
         >
           {reservations.error != null && (
-            <ErrorNotice
-              error={reservations.error}
-              retry={() => void reservations.reload()}
-            />
-          )}{" "}
+            <ErrorNotice error={reservations.error} retry={() => void reservations.reload()} />
+          )}{' '}
           {reservations.loading ? (
             <Loading />
           ) : reservations.data?.length ? (
@@ -371,48 +348,32 @@ export function Overview(workspace: Workspace) {
           title="Latest activity"
           subtitle="Every change, accounted for"
           action={
-            <Link
-              className="icon-button"
-              to="/activity"
-              aria-label="View all activity"
-            >
+            <Link className="icon-button" to="/activity" aria-label="View all activity">
               <Icon name="arrow" size={17} />
             </Link>
           }
         >
           {movements.error != null && (
-            <ErrorNotice
-              error={movements.error}
-              retry={() => void movements.reload()}
-            />
-          )}{" "}
+            <ErrorNotice error={movements.error} retry={() => void movements.reload()} />
+          )}{' '}
           {movements.loading ? (
             <Loading />
           ) : movements.data?.length ? (
             <MovementList rows={movements.data} />
           ) : (
-            <Empty
-              title="A fresh start"
-              text="Your program movements will appear here."
-            />
+            <Empty title="A fresh start" text="Your program movements will appear here." />
           )}
         </Panel>
       </div>
     </>
   );
 }
-export function Reservations({
-  program,
-  revision,
-  reserve,
-  details,
-  user,
-}: Workspace) {
+export function Reservations({ program, revision, reserve, details, user }: Workspace) {
   const [page, setPage] = useState(1);
-  const [search, setSearch] = useState("");
-  const [query, setQuery] = useState("");
-  const [status, setStatus] = useState("");
-  const [currency, setCurrency] = useState("");
+  const [search, setSearch] = useState('');
+  const [query, setQuery] = useState('');
+  const [status, setStatus] = useState('');
+  const [currency, setCurrency] = useState('');
   useEffect(() => {
     const timer = setTimeout(() => {
       setQuery(search);
@@ -425,7 +386,7 @@ export function Reservations({
   }, [program.programId]);
   const params = new URLSearchParams({
     page: String(page),
-    perPage: "10",
+    perPage: '10',
     ...(query ? { invoiceId: query } : {}),
     ...(status ? { status } : {}),
     ...(currency ? { currency } : {}),
@@ -496,11 +457,8 @@ export function Reservations({
           </label>
         </div>
         {resource.error != null && (
-          <ErrorNotice
-            error={resource.error}
-            retry={() => void resource.reload()}
-          />
-        )}{" "}
+          <ErrorNotice error={resource.error} retry={() => void resource.reload()} />
+        )}{' '}
         {resource.loading ? (
           <Loading />
         ) : resource.data?.length ? (
@@ -509,13 +467,13 @@ export function Reservations({
           <Empty
             title={
               query || status || currency
-                ? "No matching reservations"
-                : "Your first reservation starts here"
+                ? 'No matching reservations'
+                : 'Your first reservation starts here'
             }
             text={
               query || status || currency
-                ? "Try another invoice ID or adjust your filters."
-                : "Reserve capacity for an invoice and keep everything in view."
+                ? 'Try another invoice ID or adjust your filters.'
+                : 'Reserve capacity for an invoice and keep everything in view.'
             }
           />
         )}
@@ -544,7 +502,7 @@ export function Activity({ program, revision }: Workspace) {
     >
       {rows.error != null && (
         <ErrorNotice error={rows.error} retry={() => void rows.reload()} />
-      )}{" "}
+      )}{' '}
       {rows.loading ? (
         <Loading />
       ) : rows.data?.length ? (
@@ -566,11 +524,7 @@ export function Activity({ program, revision }: Workspace) {
                     <div className="invoice-cell">
                       <span className="document-icon">
                         <Icon
-                          name={
-                            r.reason.includes("RECONCIL")
-                              ? "shield"
-                              : "activity"
-                          }
+                          name={r.reason.includes('RECONCIL') ? 'shield' : 'activity'}
                           size={18}
                         />
                       </span>
@@ -585,13 +539,11 @@ export function Activity({ program, revision }: Workspace) {
                     </div>
                   </td>
                   <td
-                    className={`numeric ${r.reservedDelta.startsWith("-") ? "positive-text" : ""}`}
+                    className={`numeric ${r.reservedDelta.startsWith('-') ? 'positive-text' : ''}`}
                   >
                     {money(r.reservedDelta, r.currency, true)}
                   </td>
-                  <td className="numeric">
-                    {money(r.limitDelta, r.currency, true)}
-                  </td>
+                  <td className="numeric">{money(r.limitDelta, r.currency, true)}</td>
                   <td>
                     <span className="version-tag">v{r.stateVersion}</span>
                   </td>
@@ -620,37 +572,35 @@ export function ReserveDialog({
   close: () => void;
   complete: (r: Reservation) => void;
 }) {
-  const [invoiceId, setInvoiceId] = useState("");
-  const [amount, setAmount] = useState("");
+  const [invoiceId, setInvoiceId] = useState('');
+  const [amount, setAmount] = useState('');
   const [currency, setCurrency] = useState(program.currency);
   const [busy, setBusy] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState('');
   const [uncertain, setUncertain] = useState(false);
   async function submit(event: FormEvent) {
     event.preventDefault();
-    setError("");
+    setError('');
     try {
-      if (minor(amount, currency) <= 0n)
-        throw new Error("Enter an amount greater than zero.");
+      if (minor(amount, currency) <= 0n) throw new Error('Enter an amount greater than zero.');
     } catch (failure) {
-      setError(
-        failure instanceof Error ? failure.message : "Enter a valid amount.",
-      );
+      setError(failure instanceof Error ? failure.message : 'Enter a valid amount.');
       return;
     }
     setBusy(true);
     try {
-      const r = await command<Reservation>(
-        `${base(program.programId)}/reservations`,
-        { invoiceId, amount, currency },
-      );
+      const r = await command<Reservation>(`${base(program.programId)}/reservations`, {
+        invoiceId,
+        amount,
+        currency,
+      });
       complete(r.data);
     } catch (failure) {
       const unknown = failure instanceof ApiError && failure.uncertain;
       setUncertain(unknown);
       setError(
         unknown
-          ? "The outcome is unknown. Retry this exact request; your idempotency key is preserved."
+          ? 'The outcome is unknown. Retry this exact request; your idempotency key is preserved.'
           : message(failure),
       );
     } finally {
@@ -715,9 +665,8 @@ export function ReserveDialog({
           <div className="notice notice-info">
             <Icon name="refresh" size={17} />
             <span>
-              This invoice will be converted to {program.currency} using a
-              fixture FX quote, rounded up. The applied rate is shown after
-              reservation.
+              This invoice will be converted to {program.currency} using a fixture FX quote, rounded
+              up. The applied rate is shown after reservation.
             </span>
           </div>
         )}
@@ -736,11 +685,7 @@ export function ReserveDialog({
             Cancel
           </button>
           <button className="button button-primary" disabled={busy}>
-            {busy
-              ? "Reserving…"
-              : uncertain
-                ? "Retry exact request"
-                : "Create reservation"}
+            {busy ? 'Reserving…' : uncertain ? 'Retry exact request' : 'Create reservation'}
             <Icon name="arrow" size={16} />
           </button>
         </div>
@@ -764,13 +709,11 @@ export function ReservationDetails({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const [uncertain, setUncertain] = useState(false);
-  const current = useResource<Reservation>(
-    `${base(row.programId)}/reservations/${row.id}`,
-  );
+  const current = useResource<Reservation>(`${base(row.programId)}/reservations/${row.id}`);
   useEffect(() => {
     if (current.data)
       setRow((previous) =>
-        previous.status !== "ACTIVE" && current.data!.status === "ACTIVE"
+        previous.status !== 'ACTIVE' && current.data!.status === 'ACTIVE'
           ? previous
           : current.data!,
       );
@@ -846,27 +789,22 @@ export function ReservationDetails({
         </div>
       </dl>
       {current.error != null && (
-        <ErrorNotice
-          error={current.error}
-          retry={() => void current.reload()}
-        />
-      )}{" "}
-      {error != null && <ErrorNotice error={error} />}{" "}
+        <ErrorNotice error={current.error} retry={() => void current.reload()} />
+      )}{' '}
+      {error != null && <ErrorNotice error={error} />}{' '}
       {uncertain && (
         <div role="alert" className="notice notice-warning">
-          The outcome is unknown. Retry the same release to obtain its saved
-          result.
+          The outcome is unknown. Retry the same release to obtain its saved result.
         </div>
-      )}{" "}
-      {(row.status === "ACTIVE" || uncertain) && writable && (
+      )}{' '}
+      {(row.status === 'ACTIVE' || uncertain) && writable && (
         <>
           {confirm ? (
             <div className="release-confirm">
               <strong>Release this reservation?</strong>
               <p>
-                {money(row.reservedAmount, row.programCurrency, true)} will be
-                returned to available capacity. The saved FX amount is
-                preserved.
+                {money(row.reservedAmount, row.programCurrency, true)} will be returned to available
+                capacity. The saved FX amount is preserved.
               </p>
               <div className="dialog-actions">
                 <button
@@ -876,16 +814,8 @@ export function ReservationDetails({
                 >
                   Keep reservation
                 </button>
-                <button
-                  className="button button-primary"
-                  disabled={busy}
-                  onClick={release}
-                >
-                  {busy
-                    ? "Releasing…"
-                    : uncertain
-                      ? "Retry exact release"
-                      : "Confirm release"}
+                <button className="button button-primary" disabled={busy} onClick={release}>
+                  {busy ? 'Releasing…' : uncertain ? 'Retry exact release' : 'Confirm release'}
                 </button>
               </div>
             </div>
@@ -894,10 +824,7 @@ export function ReservationDetails({
               <button className="button button-secondary" onClick={close}>
                 Close
               </button>
-              <button
-                className="button button-primary"
-                onClick={() => setConfirm(true)}
-              >
+              <button className="button button-primary" onClick={() => setConfirm(true)}>
                 Release reservation
                 <Icon name="arrow" size={16} />
               </button>
@@ -908,20 +835,10 @@ export function ReservationDetails({
     </Dialog>
   );
 }
-export function Treasury({
-  program,
-  revision,
-  refresh,
-  notify,
-  captures,
-  capture,
-}: Workspace) {
+export function Treasury({ program, revision, refresh, notify, captures, capture }: Workspace) {
   const id = program.programId;
   const [page, setPage] = useState(1);
-  const view = useResource<View>(
-    `${internal(id)}/reconciliation-view`,
-    revision,
-  );
+  const view = useResource<View>(`${internal(id)}/reconciliation-view`, revision);
   const events = useResource<TreasuryEvent[]>(
     `${internal(id)}/treasury-events?page=${page}&perPage=10`,
     revision,
@@ -933,14 +850,14 @@ export function Treasury({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<unknown>(null);
   const [last, setLast] = useState<EventEnvelope | null>(null);
-  const [outcome, setOutcome] = useState("");
+  const [outcome, setOutcome] = useState('');
   const mounted = useRef(true);
   const captured = captures[id];
   useEffect(() => {
     mounted.current = true;
     setPage(1);
     setLimit(program.limit);
-    setOutcome("");
+    setOutcome('');
     setError(null);
     const saved = sessionStorage.getItem(`capacity.event.${id}`);
     setLast(saved ? JSON.parse(saved) : null);
@@ -960,63 +877,55 @@ export function Treasury({
       const code = result.data[0]?.resultCode;
       if (!mounted.current) return;
       if (code) {
-        setOutcome(code === "APPLIED" ? "Applied" : reason(code));
+        setOutcome(code === 'APPLIED' ? 'Applied' : reason(code));
         refresh();
         void events.reload();
         void view.reload();
-        if (code === "APPLIED")
-          notify("Treasury event applied and confirmed in PostgreSQL.");
+        if (code === 'APPLIED') notify('Treasury event applied and confirmed in PostgreSQL.');
         return;
       }
       await new Promise((resolve) => setTimeout(resolve, 500));
     } while (Date.now() < end);
-    if (mounted.current)
-      setOutcome("Published · awaiting durable confirmation");
+    if (mounted.current) setOutcome('Published · awaiting durable confirmation');
   }
   async function publish(event: EventEnvelope) {
     setLast(event);
     sessionStorage.setItem(`capacity.event.${id}`, JSON.stringify(event));
-    setOutcome("Publishing");
+    setOutcome('Publishing');
     await api(`/demo-api/programs/${id}/events`, {
-      method: "POST",
+      method: 'POST',
       body: JSON.stringify(event),
     });
     if (!mounted.current) return;
-    setOutcome("Published");
+    setOutcome('Published');
     await check(event);
   }
-  async function perform(
-    kind: "capture" | "fresh" | "captured" | "limit" | "retry" | "check",
-  ) {
+  async function perform(kind: 'capture' | 'fresh' | 'captured' | 'limit' | 'retry' | 'check') {
     setBusy(true);
     setError(null);
     try {
-      if (kind === "check" && last) {
+      if (kind === 'check' && last) {
         await check(last);
         return;
       }
-      if (kind === "retry" && last) {
+      if (kind === 'retry' && last) {
         await publish(last);
         return;
       }
       const current = await freshView();
-      if (kind === "capture") {
+      if (kind === 'capture') {
         capture(id, current);
         notify(`Snapshot captured at state version ${current.stateVersion}.`);
         return;
       }
-      if (!config.data)
-        throw new ApiError(503, "Local demo tools are unavailable.");
-      const selected = kind === "captured" ? captured : current;
-      if (!selected) throw new ApiError(422, "Capture a snapshot first.");
-      if (kind === "limit") {
+      if (!config.data) throw new ApiError(503, 'Local demo tools are unavailable.');
+      const selected = kind === 'captured' ? captured : current;
+      if (!selected) throw new ApiError(422, 'Capture a snapshot first.');
+      if (kind === 'limit') {
         try {
           if (minor(limit, current.currency) < 0n) throw new Error();
         } catch {
-          throw new ApiError(
-            422,
-            "Enter a valid non-negative limit in the program currency.",
-          );
+          throw new ApiError(422, 'Enter a valid non-negative limit in the program currency.');
         }
       }
       const envelope: EventEnvelope = {
@@ -1024,13 +933,11 @@ export function Treasury({
         eventId: crypto.randomUUID(),
         tenantId: config.data.tenantId,
         programId: id,
-        treasuryRevision: (
-          BigInt(current.highestSeenTreasuryRevision) + 1n
-        ).toString(),
+        treasuryRevision: (BigInt(current.highestSeenTreasuryRevision) + 1n).toString(),
         occurredAt: new Date().toISOString(),
-        type: kind === "limit" ? "ProgramLimitUpdated" : "ProgramStateSnapshot",
+        type: kind === 'limit' ? 'ProgramLimitUpdated' : 'ProgramStateSnapshot',
         payload:
-          kind === "limit"
+          kind === 'limit'
             ? { currency: current.currency, limit }
             : {
                 currency: selected.currency,
@@ -1044,9 +951,7 @@ export function Treasury({
       if (mounted.current) {
         setError(failure);
         setOutcome((previous) =>
-          previous === "Publishing"
-            ? "Outcome unknown · retry exact event"
-            : previous,
+          previous === 'Publishing' ? 'Outcome unknown · retry exact event' : previous,
         );
       }
     } finally {
@@ -1057,10 +962,10 @@ export function Treasury({
     if (!view.data) return;
     const href = URL.createObjectURL(
       new Blob([JSON.stringify(view.data, null, 2)], {
-        type: "application/json",
+        type: 'application/json',
       }),
     );
-    const link = document.createElement("a");
+    const link = document.createElement('a');
     link.href = href;
     link.download = `program-${id}-snapshot.json`;
     link.click();
@@ -1074,33 +979,27 @@ export function Treasury({
         </span>
         <div>
           <strong>
-            {program.syncStatus === "READY"
-              ? "Your program is in sync"
-              : "Fresh reconciliation required"}
+            {program.syncStatus === 'READY'
+              ? 'Your program is in sync'
+              : 'Fresh reconciliation required'}
           </strong>
           <p>
-            {program.syncStatus === "READY"
-              ? "Reservations reflect the latest applied treasury state."
-              : "New reservations resume only after a fresh snapshot is applied."}
+            {program.syncStatus === 'READY'
+              ? 'Reservations reflect the latest applied treasury state.'
+              : 'New reservations resume only after a fresh snapshot is applied.'}
           </p>
         </div>
-        <Badge tone={program.syncStatus === "READY" ? "green" : "orange"}>
-          {program.syncStatus === "READY" ? "Ready" : "Action required"}
+        <Badge tone={program.syncStatus === 'READY' ? 'green' : 'orange'}>
+          {program.syncStatus === 'READY' ? 'Ready' : 'Action required'}
         </Badge>
       </div>
-      {view.error != null && (
-        <ErrorNotice error={view.error} retry={() => void view.reload()} />
-      )}
+      {view.error != null && <ErrorNotice error={view.error} retry={() => void view.reload()} />}
       <div className="treasury-grid">
         <Panel
           title="Reconciliation view"
           subtitle="A complete, consistent program snapshot"
           action={
-            <button
-              className="text-button"
-              disabled={!view.data}
-              onClick={exportView}
-            >
+            <button className="text-button" disabled={!view.data} onClick={exportView}>
               <Icon name="download" size={16} />
               Export JSON
             </button>
@@ -1115,9 +1014,7 @@ export function Treasury({
                   <div>
                     <dt>State version</dt>
                     <dd>
-                      <span className="version-tag">
-                        v{view.data.stateVersion}
-                      </span>
+                      <span className="version-tag">v{view.data.stateVersion}</span>
                     </dd>
                   </div>
                   <div>
@@ -1154,29 +1051,22 @@ export function Treasury({
         >
           {config.error != null && (
             <div className="notice notice-warning">
-              Local demo tools are unavailable or this program is outside the
-              demo allowlist.
-              <button
-                className="text-button"
-                onClick={() => void config.reload()}
-              >
+              Local demo tools are unavailable or this program is outside the demo allowlist.
+              <button className="text-button" onClick={() => void config.reload()}>
                 Retry connection
               </button>
             </div>
           )}
           <p className="demo-explanation">
-            Events apply asynchronously. “Applied” appears only after PostgreSQL
-            confirms the result.
+            Events apply asynchronously. “Applied” appears only after PostgreSQL confirms the
+            result.
           </p>
-          <fieldset
-            disabled={busy || !config.data?.enabled}
-            className="demo-fieldset"
-          >
+          <fieldset disabled={busy || !config.data?.enabled} className="demo-fieldset">
             <form
               className="limit-form"
               onSubmit={(e) => {
                 e.preventDefault();
-                void perform("limit");
+                void perform('limit');
               }}
             >
               <label>
@@ -1195,17 +1085,14 @@ export function Treasury({
               </button>
             </form>
             <div className="demo-buttons">
-              <button
-                className="button button-secondary"
-                onClick={() => void perform("capture")}
-              >
+              <button className="button button-secondary" onClick={() => void perform('capture')}>
                 <Icon name="file" size={16} />
                 Capture snapshot
               </button>
               <button
                 className="button button-secondary"
                 disabled={!captured}
-                onClick={() => void perform("captured")}
+                onClick={() => void perform('captured')}
               >
                 Publish captured
               </button>
@@ -1213,36 +1100,36 @@ export function Treasury({
             {captured && (
               <div className="captured-label">
                 <Icon name="clock" size={14} />
-                Captured at version {captured.stateVersion} ·{" "}
-                {captured.reservations.length} active reservations
+                Captured at version {captured.stateVersion} · {captured.reservations.length} active
+                reservations
               </div>
             )}
             <button
               className="button button-primary button-wide"
-              onClick={() => void perform("fresh")}
+              onClick={() => void perform('fresh')}
             >
               <Icon name="refresh" size={16} />
               Apply fresh snapshot
             </button>
           </fieldset>
-          {error != null && <ErrorNotice error={error} />}{" "}
+          {error != null && <ErrorNotice error={error} />}{' '}
           {last && (
             <div className="event-outcome" role="status">
               <span className="small-label">LAST PUBLICATION</span>
-              <strong>{outcome || "Result available for checking"}</strong>
+              <strong>{outcome || 'Result available for checking'}</strong>
               <code>{last.eventId}</code>
               <div>
                 <button
                   className="text-button"
                   disabled={busy}
-                  onClick={() => void perform("check")}
+                  onClick={() => void perform('check')}
                 >
                   Check result
                 </button>
                 <button
                   className="text-button"
                   disabled={busy || !config.data?.enabled}
-                  onClick={() => void perform("retry")}
+                  onClick={() => void perform('retry')}
                 >
                   Retry exact event
                 </button>
@@ -1257,16 +1144,10 @@ export function Treasury({
           )}
         </Panel>
       </div>
-      <Panel
-        title="Treasury event history"
-        subtitle="Durable results from the PostgreSQL inbox"
-      >
+      <Panel title="Treasury event history" subtitle="Durable results from the PostgreSQL inbox">
         {events.error != null && (
-          <ErrorNotice
-            error={events.error}
-            retry={() => void events.reload()}
-          />
-        )}{" "}
+          <ErrorNotice error={events.error} retry={() => void events.reload()} />
+        )}{' '}
         {events.loading ? (
           <Loading />
         ) : events.data?.length ? (
@@ -1287,19 +1168,15 @@ export function Treasury({
                       <div className="invoice-cell">
                         <span className="document-icon">
                           <Icon
-                            name={
-                              e.type === "ProgramStateSnapshot"
-                                ? "shield"
-                                : "wallet"
-                            }
+                            name={e.type === 'ProgramStateSnapshot' ? 'shield' : 'wallet'}
                             size={18}
                           />
                         </span>
                         <span>
                           <strong>
-                            {e.type === "ProgramStateSnapshot"
-                              ? "Program snapshot"
-                              : "Limit update"}
+                            {e.type === 'ProgramStateSnapshot'
+                              ? 'Program snapshot'
+                              : 'Limit update'}
                           </strong>
                           <small>{e.eventId}</small>
                         </span>
@@ -1311,14 +1188,10 @@ export function Treasury({
                     <td>
                       <Badge
                         tone={
-                          e.resultCode === "APPLIED"
-                            ? "green"
-                            : e.resultCode
-                              ? "orange"
-                              : "neutral"
+                          e.resultCode === 'APPLIED' ? 'green' : e.resultCode ? 'orange' : 'neutral'
                         }
                       >
-                        {e.resultCode ? reason(e.resultCode) : "Pending"}
+                        {e.resultCode ? reason(e.resultCode) : 'Pending'}
                       </Badge>
                     </td>
                     <td className="muted nowrap">{date(e.createdAt)}</td>

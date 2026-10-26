@@ -26,7 +26,7 @@ export interface Program {
   available: string;
   overLimit: string;
   stateVersion: string;
-  syncStatus: "READY" | "RECONCILIATION_REQUIRED";
+  syncStatus: 'READY' | 'RECONCILIATION_REQUIRED';
   acceptingReservations: boolean;
   lastAppliedTreasuryAt: string | null;
   activeReservationCount?: number;
@@ -39,7 +39,7 @@ export interface Reservation {
   currency: string;
   reservedAmount: string;
   programCurrency: string;
-  status: "ACTIVE" | "RELEASED" | "RECONCILED_CLOSED";
+  status: 'ACTIVE' | 'RELEASED' | 'RECONCILED_CLOSED';
   createdAt: string;
   closedAt: string | null;
   fx: { rate: string; direction: string; source: string; asOf: string };
@@ -76,7 +76,7 @@ export interface TreasuryEvent {
 export interface EventEnvelope {
   schemaVersion: 1;
   eventId: string;
-  type: "ProgramStateSnapshot" | "ProgramLimitUpdated";
+  type: 'ProgramStateSnapshot' | 'ProgramLimitUpdated';
   tenantId: string;
   programId: string;
   treasuryRevision: string;

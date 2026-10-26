@@ -1,7 +1,9 @@
 name: program-capacity
 x-app: &app
   image: program-capacity-service:local
-  build: .
+  build:
+    context: .
+    target: runtime
   environment: &environment
     DATABASE_URL: postgresql://capacity:capacity@postgres:5432/capacity
     KAFKA_BROKERS: kafka:9092
@@ -45,7 +47,11 @@ services:
       CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
     volumes: ['kafka-data:/var/lib/kafka/data']
     healthcheck:
-      test: ['CMD-SHELL', '/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null 2>&1']
+      test:
+        [
+          'CMD-SHELL',
+          '/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list >/dev/null 2>&1',
+        ]
       interval: 5s
       timeout: 5s
       retries: 40
@@ -54,14 +60,32 @@ services:
     depends_on:
       kafka: { condition: service_healthy }
     entrypoint: /opt/kafka/bin/kafka-topics.sh
-    command: ['--bootstrap-server', 'kafka:9092', '--create', '--if-not-exists', '--topic', 'treasury.capacity.v1', '--partitions', '3', '--replication-factor', '1', '--config', 'max.message.bytes=3145728']
+    command:
+      [
+        '--bootstrap-server',
+        'kafka:9092',
+        '--create',
+        '--if-not-exists',
+        '--topic',
+        'treasury.capacity.v1',
+        '--partitions',
+        '3',
+        '--replication-factor',
+        '1',
+        '--config',
+        'max.message.bytes=3145728',
+      ]
   migrate:
     <<: *app
+    image: program-capacity-tools:local
+    build: { context: ., target: tools }
     depends_on:
       postgres: { condition: service_healthy }
     command: ['sh', '-ec', 'npm run db:migrate && npm run db:seed']
   app:
     <<: *app
+    cap_drop: [ALL]
+    security_opt: ['no-new-privileges:true']
     ports: ['127.0.0.1:3000:3000']
     depends_on:
       migrate: { condition: service_completed_successfully }
@@ -69,17 +93,27 @@ services:
     init: true
     stop_grace_period: 40s
     healthcheck:
-      test: ['CMD', 'node', '-e', "const s=require('net').connect(3000,'127.0.0.1',()=>{s.end();process.exit(0)});s.on('error',()=>process.exit(1))"]
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "const s=require('net').connect(3000,'127.0.0.1',()=>{s.end();process.exit(0)});s.on('error',()=>process.exit(1))",
+        ]
       interval: 5s
       timeout: 3s
       retries: 30
   tools:
     <<: *app
+    image: program-capacity-tools:local
+    build: { context: ., target: tools }
     profiles: ['tools']
     volumes: ['./.dev:/app/.dev']
     command: ['npm', 'run', 'dev:prepare']
   demo-tools:
     <<: *app
+    image: program-capacity-tools:local
+    build: { context: ., target: tools }
     environment:
       <<: *environment
       LOCAL_DEMO_ENABLED: '${LOCAL_DEMO_ENABLED:-true}'
@@ -89,12 +123,20 @@ services:
     init: true
     stop_grace_period: 20s
     healthcheck:
-      test: ['CMD', 'node', '-e', "const s=require('net').connect(3001,'127.0.0.1',()=>{s.end();process.exit(0)});s.on('error',()=>process.exit(1))"]
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "const s=require('net').connect(3001,'127.0.0.1',()=>{s.end();process.exit(0)});s.on('error',()=>process.exit(1))",
+        ]
       interval: 5s
       timeout: 3s
       retries: 20
   web:
     image: program-capacity-web:local
+    cap_drop: [ALL]
+    security_opt: ['no-new-privileges:true']
     build: ./web
     ports: ['127.0.0.1:8080:8080']
     environment:
@@ -105,7 +147,13 @@ services:
       demo-tools: { condition: service_healthy }
     init: true
     healthcheck:
-      test: ['CMD', 'node', '-e', "fetch('http://127.0.0.1:8080/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      test:
+        [
+          'CMD',
+          'node',
+          '-e',
+          "fetch('http://127.0.0.1:8080/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))",
+        ]
       interval: 5s
       timeout: 3s
       retries: 20

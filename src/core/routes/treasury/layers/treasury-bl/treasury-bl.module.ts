@@ -8,6 +8,16 @@ import { TreasuryDaModule } from '../treasury-da/treasury-da.module.js';
 import { TreasuryClModule } from '../treasury-cl/treasury-cl.module.js';
 import { TreasuryService } from './treasury.service.js';
 import { TreasuryController } from './treasury.controller.js';
-@Module({ imports: [TreasuryDaModule, TreasuryClModule, CapacityDaModule, CapacityClModule, CaslModule.forFeature({ permissions: capacityPermissions })],
-  controllers: [TreasuryController], providers: [TreasuryService, CapacitySubjectHook], exports: [TreasuryService] })
+@Module({
+  imports: [
+    TreasuryDaModule,
+    TreasuryClModule,
+    CapacityDaModule,
+    CapacityClModule,
+    CaslModule.forFeature({ permissions: capacityPermissions }),
+  ],
+  controllers: [TreasuryController],
+  providers: [TreasuryService, CapacitySubjectHook],
+  exports: [TreasuryService],
+})
 export class TreasuryBlModule {}

@@ -1,6 +1,6 @@
-import { useEffect, useId, useRef, type ReactNode } from "react";
-import { message } from "./api";
-import type { Meta } from "./types";
+import { useEffect, useId, useRef, type ReactNode } from 'react';
+import { message } from './api';
+import type { Meta } from './types';
 
 const paths: Record<string, ReactNode> = {
   grid: (
@@ -106,7 +106,7 @@ export function Icon({ name, size = 20 }: { name: string; size?: number }) {
 }
 export function Brand({ light = false }: { light?: boolean }) {
   return (
-    <div className={`brand ${light ? "brand-light" : ""}`}>
+    <div className={`brand ${light ? 'brand-light' : ''}`}>
       <img src="/mark.svg" alt="" />
       <span>
         program<span className="brand-second">capacity</span>
@@ -115,13 +115,7 @@ export function Brand({ light = false }: { light?: boolean }) {
     </div>
   );
 }
-export function Badge({
-  children,
-  tone = "neutral",
-}: {
-  children: ReactNode;
-  tone?: string;
-}) {
+export function Badge({ children, tone = 'neutral' }: { children: ReactNode; tone?: string }) {
   return (
     <span className={`badge badge-${tone}`}>
       <span className="status-dot" />
@@ -131,20 +125,8 @@ export function Badge({
 }
 export function ReservationStatus({ value }: { value: string }) {
   return (
-    <Badge
-      tone={
-        value === "ACTIVE"
-          ? "green"
-          : value === "RELEASED"
-            ? "neutral"
-            : "orange"
-      }
-    >
-      {value === "RECONCILED_CLOSED"
-        ? "Reconciled"
-        : value === "ACTIVE"
-          ? "Active"
-          : "Released"}
+    <Badge tone={value === 'ACTIVE' ? 'green' : value === 'RELEASED' ? 'neutral' : 'orange'}>
+      {value === 'RECONCILED_CLOSED' ? 'Reconciled' : value === 'ACTIVE' ? 'Active' : 'Released'}
     </Badge>
   );
 }
@@ -153,7 +135,7 @@ export function Panel({
   subtitle,
   action,
   children,
-  className = "",
+  className = '',
 }: {
   title: string;
   subtitle?: string;
@@ -175,8 +157,8 @@ export function Panel({
   );
 }
 export function Empty({
-  title = "Nothing here yet",
-  text = "Your activity will appear here as you work.",
+  title = 'Nothing here yet',
+  text = 'Your activity will appear here as you work.',
   action,
 }: {
   title?: string;
@@ -192,13 +174,7 @@ export function Empty({
     </div>
   );
 }
-export function ErrorNotice({
-  error,
-  retry,
-}: {
-  error: unknown;
-  retry?: () => void;
-}) {
+export function ErrorNotice({ error, retry }: { error: unknown; retry?: () => void }) {
   return (
     <div role="alert" className="notice notice-error">
       <Icon name="alert" />
@@ -219,13 +195,7 @@ export function Loading() {
     </div>
   );
 }
-export function Pagination({
-  meta,
-  change,
-}: {
-  meta?: Meta;
-  change: (page: number) => void;
-}) {
+export function Pagination({ meta, change }: { meta?: Meta; change: (page: number) => void }) {
   if (!meta) return null;
   const start = meta.total ? (meta.currentPage - 1) * meta.perPage + 1 : 0;
   return (
@@ -233,7 +203,7 @@ export function Pagination({
       <span>
         {meta.total
           ? `${start}–${Math.min(start + meta.perPage - 1, meta.total)} of ${meta.total}`
-          : "0 results"}
+          : '0 results'}
       </span>
       <div>
         <button
@@ -277,7 +247,7 @@ export function Dialog({
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
     ref.current?.showModal();
-    ref.current?.querySelector<HTMLElement>("[data-autofocus]")?.focus();
+    ref.current?.querySelector<HTMLElement>('[data-autofocus]')?.focus();
     return () => {
       ref.current?.close();
       previous?.focus();
@@ -298,12 +268,7 @@ export function Dialog({
           <h2 id={label}>{title}</h2>
           {subtitle && <p>{subtitle}</p>}
         </div>
-        <button
-          className="icon-button"
-          aria-label="Close dialog"
-          disabled={busy}
-          onClick={close}
-        >
+        <button className="icon-button" aria-label="Close dialog" disabled={busy} onClick={close}>
           <Icon name="close" />
         </button>
       </div>
@@ -313,16 +278,16 @@ export function Dialog({
 }
 export function date(value: string | null, short = false) {
   return value
-    ? new Intl.DateTimeFormat("en-GB", {
-        day: "2-digit",
-        month: "short",
-        ...(short ? {} : { hour: "2-digit", minute: "2-digit" }),
+    ? new Intl.DateTimeFormat('en-GB', {
+        day: '2-digit',
+        month: 'short',
+        ...(short ? {} : { hour: '2-digit', minute: '2-digit' }),
       }).format(new Date(value))
-    : "Not yet";
+    : 'Not yet';
 }
 export function reason(value: string) {
   return value
     .toLowerCase()
-    .replace(/_/g, " ")
+    .replace(/_/g, ' ')
     .replace(/^./, (c) => c.toUpperCase());
 }

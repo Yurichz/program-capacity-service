@@ -15,15 +15,25 @@ import { ReconciliationViewEntity } from '../../entities/reconciliation-view.ent
 import { TreasuryEventEntity } from '../../entities/treasury-event.entity.js';
 import { TreasuryEventListQueryDto } from '#core/routes/capacity/dto/list-query.dto.js';
 
-@ApiTags('Treasury') @ApiBearerAuth() @Controller('internal/programs/:programId')
+@ApiTags('Treasury')
+@ApiBearerAuth()
+@Controller('internal/programs/:programId')
 export class TreasuryController {
   constructor(private readonly service: TreasuryService) {}
-  @Get('treasury-events') @Serialize(TreasuryEventEntity) @ApiDefaultResponse(TreasuryEventEntity, { array: true, paginated: true })
+  @Get('treasury-events')
+  @Serialize(TreasuryEventEntity)
+  @ApiDefaultResponse(TreasuryEventEntity, { array: true, paginated: true })
   @UseAccessAbility(Actions.export, CapacityEntity, CapacitySubjectHook)
-  events(@CurrentUser() user: AuthorizableUser, @Param() params: ProgramParamsDto, @Query() query: TreasuryEventListQueryDto) {
+  events(
+    @CurrentUser() user: AuthorizableUser,
+    @Param() params: ProgramParamsDto,
+    @Query() query: TreasuryEventListQueryDto,
+  ) {
     return this.service.events(principalFor(user), params.programId, query);
   }
-  @Get('reconciliation-view') @Serialize(ReconciliationViewEntity) @ApiDefaultResponse(ReconciliationViewEntity)
+  @Get('reconciliation-view')
+  @Serialize(ReconciliationViewEntity)
+  @ApiDefaultResponse(ReconciliationViewEntity)
   @UseAccessAbility(Actions.export, CapacityEntity, CapacitySubjectHook)
   view(@CurrentUser() user: AuthorizableUser, @Param() params: ProgramParamsDto) {
     return this.service.view(principalFor(user), params.programId);

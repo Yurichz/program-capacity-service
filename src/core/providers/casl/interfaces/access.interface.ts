@@ -12,8 +12,14 @@ export interface AuthorizableUser {
   clientId: string;
   sessionId: string;
 }
-export interface AuthorizableRequest extends Request { user?: AuthorizableUser; }
-export interface SubjectHook { run(request: AuthorizableRequest): object | undefined | Promise<object | undefined>; }
+export interface AuthorizableRequest extends Request {
+  user?: AuthorizableUser;
+}
+export interface SubjectHook {
+  run(request: AuthorizableRequest): object | undefined | Promise<object | undefined>;
+}
 export type AppAbility = MongoAbility<[Actions, Subject]>;
-export type PermissionBuilder = Pick<AbilityBuilder<AppAbility>, 'can' | 'cannot'> & { user: AuthorizableUser };
+export type PermissionBuilder = Pick<AbilityBuilder<AppAbility>, 'can' | 'cannot'> & {
+  user: AuthorizableUser;
+};
 export type Permissions = Record<string, (builder: PermissionBuilder) => void>;

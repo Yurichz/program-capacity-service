@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from "react";
-import { api } from "./api";
-import type { Result } from "./types";
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { api } from './api';
+import type { Result } from './types';
 
 export function useResource<T>(
   path: string | null,
@@ -42,12 +42,12 @@ export function useResource<T>(
     const focus = () => {
       if (!document.hidden) void reload();
     };
-    window.addEventListener("focus", focus);
-    document.addEventListener("visibilitychange", focus);
+    window.addEventListener('focus', focus);
+    document.addEventListener('visibilitychange', focus);
     return () => {
       clearInterval(timer);
-      window.removeEventListener("focus", focus);
-      document.removeEventListener("visibilitychange", focus);
+      window.removeEventListener('focus', focus);
+      document.removeEventListener('visibilitychange', focus);
       control.current?.abort();
       control.current = null;
     };

@@ -3,7 +3,10 @@ import type { Permissions } from '#core/providers/casl/interfaces/access.interfa
 import { UserEntity } from '../../entities/user.entity.js';
 export const userPermissions: Permissions = {
   everyone({ can, user }) {
-    if (user.roles.some(role => ['USER', 'READ_ONLY', 'TREASURY'].includes(role))) can(Actions.read, UserEntity, { id: user.id });
+    if (user.roles.some((role) => ['USER', 'READ_ONLY', 'TREASURY'].includes(role)))
+      can(Actions.read, UserEntity, { id: user.id });
   },
-  USER({ can, user }) { can(Actions.update, UserEntity, { id: user.id }); },
+  USER({ can, user }) {
+    can(Actions.update, UserEntity, { id: user.id });
+  },
 };

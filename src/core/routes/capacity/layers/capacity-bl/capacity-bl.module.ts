@@ -7,6 +7,15 @@ import { CapacityController, ProgramsController } from './capacity.controller.js
 import { CapacityService } from './capacity.service.js';
 import { CapacitySubjectHook, ProgramListHook } from './capacity.hook.js';
 import { capacityPermissions } from './capacity.permissions.js';
-@Module({ imports: [CapacityDaModule, CapacityClModule, KafkaStateModule, CaslModule.forFeature({ permissions: capacityPermissions })],
-  controllers: [ProgramsController, CapacityController], providers: [CapacityService, CapacitySubjectHook, ProgramListHook], exports: [CapacityService] })
+@Module({
+  imports: [
+    CapacityDaModule,
+    CapacityClModule,
+    KafkaStateModule,
+    CaslModule.forFeature({ permissions: capacityPermissions }),
+  ],
+  controllers: [ProgramsController, CapacityController],
+  providers: [CapacityService, CapacitySubjectHook, ProgramListHook],
+  exports: [CapacityService],
+})
 export class CapacityBlModule {}

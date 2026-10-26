@@ -1,8 +1,11 @@
 node_modules/
 dist/
 .env
+.env.*
+!.env.example
 .dev/
 coverage/
+.ci-artifacts/
 work/
 src/generated/
 

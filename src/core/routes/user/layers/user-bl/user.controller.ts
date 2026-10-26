@@ -11,13 +11,23 @@ import { UpdateUserDto } from '../../dto/update-user.dto.js';
 import { UserSubjectHook } from './user.hook.js';
 import { UserService } from './user.service.js';
 
-@ApiTags('Users') @ApiBearerAuth() @Controller('users')
+@ApiTags('Users')
+@ApiBearerAuth()
+@Controller('users')
 export class UserController {
   constructor(private readonly service: UserService) {}
-  @Get('me') @Serialize(UserEntity) @ApiDefaultResponse(UserEntity)
+  @Get('me')
+  @Serialize(UserEntity)
+  @ApiDefaultResponse(UserEntity)
   @UseAccessAbility(Actions.read, UserEntity, UserSubjectHook)
-  me(@CurrentUser() user: AuthorizableUser) { return this.service.me(user.id); }
-  @Patch('me') @Serialize(UserEntity) @ApiDefaultResponse(UserEntity)
+  me(@CurrentUser() user: AuthorizableUser) {
+    return this.service.me(user.id);
+  }
+  @Patch('me')
+  @Serialize(UserEntity)
+  @ApiDefaultResponse(UserEntity)
   @UseAccessAbility(Actions.update, UserEntity, UserSubjectHook)
-  update(@CurrentUser() user: AuthorizableUser, @Body() input: UpdateUserDto) { return this.service.updateMe(user.id, input); }
+  update(@CurrentUser() user: AuthorizableUser, @Body() input: UpdateUserDto) {
+    return this.service.updateMe(user.id, input);
+  }
 }

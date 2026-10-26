@@ -12,15 +12,35 @@ import { RefreshTokenDto } from '../../dto/refresh-token.dto.js';
 import { JwtTokensEntity } from '../../entities/jwt-tokens.entity.js';
 import { AuthService } from './auth.service.js';
 
-@ApiTags('Auth') @Controller('auth')
+@ApiTags('Auth')
+@Controller('auth')
 export class AuthController {
   constructor(private readonly service: AuthService) {}
-  @Post('sign-up') @SkipAuth() @Serialize(UserEntity) @ApiDefaultResponse(UserEntity, { status: 201 })
-  signUp(@Body() input: SignUpDto) { return this.service.signUp(input); }
-  @Post('sign-in') @SkipAuth() @Serialize(JwtTokensEntity) @ApiDefaultResponse(JwtTokensEntity)
-  signIn(@Body() input: SignInDto) { return this.service.signIn(input); }
-  @Post('token/refresh') @SkipAuth() @Serialize(JwtTokensEntity) @ApiDefaultResponse(JwtTokensEntity)
-  refresh(@Body() input: RefreshTokenDto) { return this.service.refresh(input.refreshToken); }
-  @Post('logout') @ApiBearerAuth() @ApiDefaultResponse(undefined, { status: 204 })
-  logout(@CurrentUser() user: AuthorizableUser) { return this.service.logout(user.id, user.sessionId); }
+  @Post('sign-up')
+  @SkipAuth()
+  @Serialize(UserEntity)
+  @ApiDefaultResponse(UserEntity, { status: 201 })
+  signUp(@Body() input: SignUpDto) {
+    return this.service.signUp(input);
+  }
+  @Post('sign-in')
+  @SkipAuth()
+  @Serialize(JwtTokensEntity)
+  @ApiDefaultResponse(JwtTokensEntity)
+  signIn(@Body() input: SignInDto) {
+    return this.service.signIn(input);
+  }
+  @Post('token/refresh')
+  @SkipAuth()
+  @Serialize(JwtTokensEntity)
+  @ApiDefaultResponse(JwtTokensEntity)
+  refresh(@Body() input: RefreshTokenDto) {
+    return this.service.refresh(input.refreshToken);
+  }
+  @Post('logout')
+  @ApiBearerAuth()
+  @ApiDefaultResponse(undefined, { status: 204 })
+  logout(@CurrentUser() user: AuthorizableUser) {
+    return this.service.logout(user.id, user.sessionId);
+  }
 }

@@ -3,6 +3,14 @@ dist
 .git
 .vs
 .env
+.env.*
 .dev
 work
 web
+coverage
+.ci-artifacts
+docs
+.github
+AGENTS.md
+README.md
+openapi.json

@@ -10,15 +10,20 @@ export abstract class TxScopeRepository<T> {
     private readonly explicitClient?: Prisma.TransactionClient,
   ) {}
 
-  get $(): T { return this.model(this.explicitClient ?? this.prisma.client); }
-  protected get client(): Prisma.TransactionClient { return this.explicitClient ?? this.prisma.client; }
+  get $(): T {
+    return this.model(this.explicitClient ?? this.prisma.client);
+  }
+  protected get client(): Prisma.TransactionClient {
+    return this.explicitClient ?? this.prisma.client;
+  }
   readonly paginate = paginate;
 
   tx(client?: Prisma.TransactionClient): this {
     const cache = new Map<PropertyKey, unknown>();
     const proxy: this = new Proxy(this, {
       get(object, key, receiver) {
-        if (key === '$') return object.model(client ?? object.explicitClient ?? object.prisma.client);
+        if (key === '$')
+          return object.model(client ?? object.explicitClient ?? object.prisma.client);
         if (key === 'explicitClient') return client ?? object.explicitClient;
         const value = Reflect.get(object, key, receiver);
         if (typeof value !== 'function') return value;

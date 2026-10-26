@@ -278,12 +278,12 @@ label small {
   flex-direction: column;
   padding: 48px 54px 30px;
   color: white;
-  background: #081d43 url("/login-background.png") center/cover;
+  background: #081d43 url('/login-background.png') center/cover;
   isolation: isolate;
   overflow: hidden;
 }
 .login-art:before {
-  content: "";
+  content: '';
   position: absolute;
   inset: 0;
   background: linear-gradient(110deg, #07192c88, transparent 90%);
@@ -505,7 +505,7 @@ label small {
   color: #378df6;
 }
 .nav-active:before {
-  content: "";
+  content: '';
   position: absolute;
   left: -18px;
   top: 12px;
@@ -1150,7 +1150,7 @@ label small {
   position: relative;
 }
 .connection-line > span:before {
-  content: "";
+  content: '';
   position: absolute;
   width: 4px;
   height: 4px;

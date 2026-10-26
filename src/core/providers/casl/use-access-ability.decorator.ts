@@ -6,5 +6,8 @@ import { Actions } from './actions.enum.js';
 import type { SubjectHook } from './interfaces/access.interface.js';
 
 export function UseAccessAbility(action: Actions, target: Subject, hook?: Type<SubjectHook>) {
-  return applyDecorators(SetMetadata(ACCESS_ABILITY, { action, target, hook }), UseGuards(AccessGuard));
+  return applyDecorators(
+    SetMetadata(ACCESS_ABILITY, { action, target, hook }),
+    UseGuards(AccessGuard),
+  );
 }

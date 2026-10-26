@@ -16,7 +16,11 @@ export class AbilityFactory {
     const context = { user, can: builder.can.bind(builder), cannot: builder.cannot.bind(builder) };
     this.permissions.everyone?.(context);
     for (const role of user.roles) this.permissions[role]?.(context);
-    if (this.options.superuserRole && user.roles.includes(this.options.superuserRole)) builder.can(Actions.manage, 'all');
-    return builder.build({ detectSubjectType: (resource) => Reflect.get(resource, '__caslSubjectType__') ?? resource.constructor });
+    if (this.options.superuserRole && user.roles.includes(this.options.superuserRole))
+      builder.can(Actions.manage, 'all');
+    return builder.build({
+      detectSubjectType: (resource) =>
+        Reflect.get(resource, '__caslSubjectType__') ?? resource.constructor,
+    });
   }
 }

@@ -13,43 +13,18 @@
     "sourceMap": true,
     "declaration": true,
     "paths": {
-      "#core/*": [
-        "./src/core/*"
-      ],
-      "#config/*": [
-        "./src/config/*"
-      ],
-      "#constants/*": [
-        "./src/constants/*"
-      ],
-      "#decorators/*": [
-        "./src/decorators/*"
-      ],
-      "#guards/*": [
-        "./src/guards/*"
-      ],
-      "#interceptors/*": [
-        "./src/interceptors/*"
-      ],
-      "#filters/*": [
-        "./src/filters/*"
-      ],
-      "#helpers/*": [
-        "./src/helpers/*"
-      ],
-      "#interfaces/*": [
-        "./src/interfaces/*"
-      ],
-      "#generated/*": [
-        "./src/generated/*"
-      ]
+      "#core/*": ["./src/core/*"],
+      "#config/*": ["./src/config/*"],
+      "#constants/*": ["./src/constants/*"],
+      "#decorators/*": ["./src/decorators/*"],
+      "#guards/*": ["./src/guards/*"],
+      "#interceptors/*": ["./src/interceptors/*"],
+      "#filters/*": ["./src/filters/*"],
+      "#helpers/*": ["./src/helpers/*"],
+      "#interfaces/*": ["./src/interfaces/*"],
+      "#generated/*": ["./src/generated/*"]
     }
   },
-  "include": [
-    "src/**/*.ts"
-  ],
-  "exclude": [
-    "node_modules",
-    "dist"
-  ]
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "dist"]
 }

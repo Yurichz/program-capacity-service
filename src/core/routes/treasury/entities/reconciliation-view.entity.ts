@@ -9,5 +9,8 @@ export class ReconciliationViewEntity {
   @Expose() @ApiProperty() stateVersion!: string;
   @Expose() @ApiProperty() lastAppliedTreasuryRevision!: string;
   @Expose() @ApiProperty() highestSeenTreasuryRevision!: string;
-  @Expose() @ApiProperty({ type: [ReservationEntity] }) @Type(() => ReservationEntity) reservations!: ReservationEntity[];
+  @Expose()
+  @ApiProperty({ type: [ReservationEntity] })
+  @Type(() => ReservationEntity)
+  reservations!: ReservationEntity[];
 }

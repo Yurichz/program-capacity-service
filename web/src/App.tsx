@@ -1,15 +1,8 @@
-import { useEffect, useState, type FormEvent } from "react";
-import {
-  Link,
-  NavLink,
-  Navigate,
-  Route,
-  Routes,
-  useLocation,
-} from "react-router-dom";
-import { api, ApiError, clearSession, hasSession, logout, signIn } from "./api";
-import { Brand, ErrorNotice, Icon, Loading } from "./ui";
-import { useResource } from "./use-resource";
+import { useEffect, useState, type FormEvent } from 'react';
+import { Link, NavLink, Navigate, Route, Routes, useLocation } from 'react-router-dom';
+import { api, ApiError, clearSession, hasSession, logout, signIn } from './api';
+import { Brand, ErrorNotice, Icon, Loading } from './ui';
+import { useResource } from './use-resource';
 import {
   Activity,
   Overview,
@@ -17,20 +10,14 @@ import {
   Treasury,
   ReserveDialog,
   ReservationDetails,
-} from "./pages";
-import type { Program, Reservation, Result, User, View } from "./types";
+} from './pages';
+import type { Program, Reservation, Result, User, View } from './types';
 
-async function readPrograms(
-  path: string,
-  signal: AbortSignal,
-): Promise<Result<Program[]>> {
+async function readPrograms(path: string, signal: AbortSignal): Promise<Result<Program[]>> {
   const data: Program[] = [];
   let page: number | null = 1;
   do {
-    const result: Result<Program[]> = await api<Program[]>(
-      `${path}&page=${page}`,
-      { signal },
-    );
+    const result: Result<Program[]> = await api<Program[]>(`${path}&page=${page}`, { signal });
     data.push(...result.data);
     page = result.meta?.next ?? null;
   } while (page !== null);
@@ -49,8 +36,8 @@ export interface Workspace {
   capture: (programId: string, view: View) => void;
 }
 function Login({ complete }: { complete: (user: User) => void }) {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
   async function submit(event: FormEvent) {
@@ -59,7 +46,7 @@ function Login({ complete }: { complete: (user: User) => void }) {
     setBusy(true);
     try {
       await signIn(email, password);
-      complete((await api<User>("/api/v1/users/me")).data);
+      complete((await api<User>('/api/v1/users/me')).data);
     } catch (failure) {
       setError(failure);
     } finally {
@@ -129,12 +116,9 @@ function Login({ complete }: { complete: (user: User) => void }) {
               />
             </label>
             {error != null && <ErrorNotice error={error} />}
-            <button
-              className="button button-primary button-wide"
-              disabled={busy}
-            >
+            <button className="button button-primary button-wide" disabled={busy}>
               {busy ? (
-                "Signing in…"
+                'Signing in…'
               ) : (
                 <>
                   Sign in <Icon name="arrow" size={18} />
@@ -160,46 +144,37 @@ function Login({ complete }: { complete: (user: User) => void }) {
   );
 }
 const navigation = [
-  { path: "/overview", label: "Overview", icon: "grid" },
-  { path: "/reservations", label: "Reservations", icon: "file" },
-  { path: "/activity", label: "Activity", icon: "activity" },
-  { path: "/treasury", label: "Treasury", icon: "shield" },
+  { path: '/overview', label: 'Overview', icon: 'grid' },
+  { path: '/reservations', label: 'Reservations', icon: 'file' },
+  { path: '/activity', label: 'Activity', icon: 'activity' },
+  { path: '/treasury', label: 'Treasury', icon: 'shield' },
 ];
 function Cabinet({ user, signedOut }: { user: User; signedOut: () => void }) {
   const [revision, setRevision] = useState(0);
-  const programs = useResource<Program[]>(
-    "/api/v1/programs?perPage=100",
-    revision,
-    readPrograms,
-  );
-  const [selection, setSelection] = useState(
-    sessionStorage.getItem("capacity.program") ?? "",
-  );
+  const programs = useResource<Program[]>('/api/v1/programs?perPage=100', revision, readPrograms);
+  const [selection, setSelection] = useState(sessionStorage.getItem('capacity.program') ?? '');
   const [creating, setCreating] = useState(false);
   const [detail, setDetail] = useState<Reservation | null>(null);
-  const [toast, setToast] = useState("");
+  const [toast, setToast] = useState('');
   const [mobile, setMobile] = useState(false);
   const [profile, setProfile] = useState(false);
   const [captures, setCaptures] = useState<Record<string, View>>({});
   const [loggingOut, setLoggingOut] = useState(false);
   const [logoutError, setLogoutError] = useState<unknown>(null);
   const location = useLocation();
-  const program =
-    programs.data?.find((p) => p.programId === selection) ?? programs.data?.[0];
-  const canTreasury =
-    user.roles.includes("TREASURY") || user.roles.includes("APP_ADMIN");
-  const title =
-    navigation.find((n) => location.pathname === n.path)?.label ?? "Overview";
+  const program = programs.data?.find((p) => p.programId === selection) ?? programs.data?.[0];
+  const canTreasury = user.roles.includes('TREASURY') || user.roles.includes('APP_ADMIN');
+  const title = navigation.find((n) => location.pathname === n.path)?.label ?? 'Overview';
   useEffect(() => {
     setMobile(false);
     setProfile(false);
   }, [location.pathname]);
   useEffect(() => {
-    if (program) sessionStorage.setItem("capacity.program", program.programId);
+    if (program) sessionStorage.setItem('capacity.program', program.programId);
   }, [program?.programId]);
   useEffect(() => {
     if (toast) {
-      const timer = setTimeout(() => setToast(""), 6000);
+      const timer = setTimeout(() => setToast(''), 6000);
       return () => clearTimeout(timer);
     }
   }, [toast]);
@@ -216,8 +191,7 @@ function Cabinet({ user, signedOut }: { user: User; signedOut: () => void }) {
         details: setDetail,
         notify: setToast,
         captures,
-        capture: (id, view) =>
-          setCaptures((current) => ({ ...current, [id]: view })),
+        capture: (id, view) => setCaptures((current) => ({ ...current, [id]: view })),
       }
     : null;
   async function leave() {
@@ -243,32 +217,23 @@ function Cabinet({ user, signedOut }: { user: User; signedOut: () => void }) {
           onClick={() => setMobile(false)}
         />
       )}
-      <aside
-        id="main-sidebar"
-        className={`sidebar ${mobile ? "sidebar-open" : ""}`}
-      >
-        <Link
-          className="brand-link"
-          to="/overview"
-          aria-label="Program Capacity home"
-        >
+      <aside id="main-sidebar" className={`sidebar ${mobile ? 'sidebar-open' : ''}`}>
+        <Link className="brand-link" to="/overview" aria-label="Program Capacity home">
           <Brand />
         </Link>
         <span className="nav-group-label">WORKSPACE</span>
         <nav aria-label="Main navigation">
           {navigation
-            .filter((n) => n.path !== "/treasury" || canTreasury)
+            .filter((n) => n.path !== '/treasury' || canTreasury)
             .map((n) => (
               <NavLink
                 key={n.path}
                 to={n.path}
-                className={({ isActive }) =>
-                  `nav-item ${isActive ? "nav-active" : ""}`
-                }
+                className={({ isActive }) => `nav-item ${isActive ? 'nav-active' : ''}`}
               >
                 <Icon name={n.icon} />
                 <span>{n.label}</span>
-                {n.path === "/treasury" && selected?.syncStatus !== "READY" && (
+                {n.path === '/treasury' && selected?.syncStatus !== 'READY' && (
                   <span className="nav-indicator" />
                 )}
               </NavLink>
@@ -282,11 +247,9 @@ function Cabinet({ user, signedOut }: { user: User; signedOut: () => void }) {
             </span>
             <span>
               <strong>
-                {selected
-                  ? `Program ${selected.programId.slice(0, 8)}`
-                  : "No program"}
+                {selected ? `Program ${selected.programId.slice(0, 8)}` : 'No program'}
               </strong>
-              <small>{selected?.currency ?? "Your funding workspace"}</small>
+              <small>{selected?.currency ?? 'Your funding workspace'}</small>
             </span>
           </div>
         </div>
@@ -342,22 +305,16 @@ function Cabinet({ user, signedOut }: { user: User; signedOut: () => void }) {
                   {user.lastName?.slice(0, 1).toUpperCase()}
                 </span>
                 <span className="profile-name">
-                  <strong>{user.firstName ?? user.email.split("@")[0]}</strong>
-                  <small>
-                    {canTreasury ? "Program operator" : "Workspace member"}
-                  </small>
+                  <strong>{user.firstName ?? user.email.split('@')[0]}</strong>
+                  <small>{canTreasury ? 'Program operator' : 'Workspace member'}</small>
                 </span>
                 <Icon name="down" size={14} />
               </button>
               {profile && (
                 <div className="profile-menu">
                   <strong>{user.email}</strong>
-                  <small>{user.roles.join(" · ")}</small>
-                  <button
-                    className="text-button"
-                    disabled={loggingOut}
-                    onClick={leave}
-                  >
+                  <small>{user.roles.join(' · ')}</small>
+                  <button className="text-button" disabled={loggingOut} onClick={leave}>
                     <Icon name="logout" size={16} />
                     Sign out
                   </button>
@@ -372,13 +329,13 @@ function Cabinet({ user, signedOut }: { user: User; signedOut: () => void }) {
               <span className="section-kicker">PROGRAM WORKSPACE</span>
               <h1>{title}</h1>
               <p>
-                {title === "Overview"
-                  ? "A clear view of your capacity. More confidence in every move."
-                  : title === "Reservations"
-                    ? "Your invoices, reserved with precision."
-                    : title === "Activity"
-                      ? "The complete story behind every change."
-                      : "Keep your program and treasury in sync."}
+                {title === 'Overview'
+                  ? 'A clear view of your capacity. More confidence in every move.'
+                  : title === 'Reservations'
+                    ? 'Your invoices, reserved with precision.'
+                    : title === 'Activity'
+                      ? 'The complete story behind every change.'
+                      : 'Keep your program and treasury in sync.'}
               </p>
             </div>
             <div className="heading-actions">
@@ -386,7 +343,7 @@ function Cabinet({ user, signedOut }: { user: User; signedOut: () => void }) {
                 <span className="small-label">PROGRAM</span>
                 <select
                   aria-label="Program"
-                  value={selected?.programId ?? ""}
+                  value={selected?.programId ?? ''}
                   onChange={(e) => {
                     setSelection(e.target.value);
                     setDetail(null);
@@ -410,11 +367,8 @@ function Cabinet({ user, signedOut }: { user: User; signedOut: () => void }) {
             </div>
           </div>
           {programs.error != null && (
-            <ErrorNotice
-              error={programs.error}
-              retry={() => void programs.reload()}
-            />
-          )}{" "}
+            <ErrorNotice error={programs.error} retry={() => void programs.reload()} />
+          )}{' '}
           {logoutError != null && <ErrorNotice error={logoutError} />}
           {programs.loading ? (
             <Loading />
@@ -424,30 +378,17 @@ function Cabinet({ user, signedOut }: { user: User; signedOut: () => void }) {
                 <Route path="/overview" element={<Overview {...workspace} />} />
                 <Route
                   path="/reservations"
-                  element={
-                    <Reservations
-                      key={workspace.program.programId}
-                      {...workspace}
-                    />
-                  }
+                  element={<Reservations key={workspace.program.programId} {...workspace} />}
                 />
                 <Route
                   path="/activity"
-                  element={
-                    <Activity
-                      key={workspace.program.programId}
-                      {...workspace}
-                    />
-                  }
+                  element={<Activity key={workspace.program.programId} {...workspace} />}
                 />
                 <Route
                   path="/treasury"
                   element={
                     canTreasury ? (
-                      <Treasury
-                        key={workspace.program.programId}
-                        {...workspace}
-                      />
+                      <Treasury key={workspace.program.programId} {...workspace} />
                     ) : (
                       <div className="notice notice-error">
                         Your account does not have treasury permission.
@@ -465,24 +406,19 @@ function Cabinet({ user, signedOut }: { user: User; signedOut: () => void }) {
                     setCreating(false);
                     setDetail(r);
                     refresh();
-                    setToast("Reservation created successfully.");
+                    setToast('Reservation created successfully.');
                   }}
                 />
-              )}{" "}
+              )}{' '}
               {detail && (
                 <ReservationDetails
                   reservation={detail}
-                  canWrite={
-                    user.roles.includes("USER") ||
-                    user.roles.includes("APP_ADMIN")
-                  }
+                  canWrite={user.roles.includes('USER') || user.roles.includes('APP_ADMIN')}
                   close={() => setDetail(null)}
                   complete={(r) => {
                     setDetail(r);
                     refresh();
-                    setToast(
-                      "Reservation released. Capacity is available again.",
-                    );
+                    setToast('Reservation released. Capacity is available again.');
                   }}
                 />
               )}
@@ -514,7 +450,7 @@ function Cabinet({ user, signedOut }: { user: User; signedOut: () => void }) {
           <button
             className="icon-button"
             aria-label="Dismiss notification"
-            onClick={() => setToast("")}
+            onClick={() => setToast('')}
           >
             <Icon name="close" size={16} />
           </button>
@@ -529,20 +465,18 @@ export function App() {
   const [error, setError] = useState<unknown>(null);
   useEffect(() => {
     if (hasSession())
-      api<User>("/api/v1/users/me")
+      api<User>('/api/v1/users/me')
         .then((result) => setUser(result.data))
         .catch((failure) => {
-          if (!(failure instanceof ApiError) || failure.status !== 401)
-            setError(failure);
+          if (!(failure instanceof ApiError) || failure.status !== 401) setError(failure);
         })
         .finally(() => setBooting(false));
     const unauthorized = () => {
       clearSession();
       setUser(null);
     };
-    window.addEventListener("capacity:unauthorized", unauthorized);
-    return () =>
-      window.removeEventListener("capacity:unauthorized", unauthorized);
+    window.addEventListener('capacity:unauthorized', unauthorized);
+    return () => window.removeEventListener('capacity:unauthorized', unauthorized);
   }, []);
   if (booting) return <Loading />;
   if (!user)

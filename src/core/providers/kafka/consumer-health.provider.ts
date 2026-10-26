@@ -1,1 +1,4 @@
-export class ConsumerHealth { connected = false; }
+export class ConsumerHealth {
+  connected = false;
+  stopping = false;
+}

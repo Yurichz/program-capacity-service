@@ -17,7 +17,8 @@ export class ReservationEntity {
   @Expose() @ApiProperty({ example: '1375.55' }) reservedAmount!: string;
   @Expose() @ApiProperty() programCurrency!: string;
   @Expose() @ApiProperty({ type: FxEntity }) @Type(() => FxEntity) fx!: FxEntity;
-  @Expose() @ApiProperty({ enum: ['ACTIVE','RELEASED','RECONCILED_CLOSED'] }) status!: string;
+  @Expose() @ApiProperty({ enum: ['ACTIVE', 'RELEASED', 'RECONCILED_CLOSED'] }) status!: string;
   @Expose() @ApiProperty({ format: 'date-time' }) createdAt!: string;
-  @Expose() @ApiProperty({ type: String, nullable: true, format: 'date-time' }) closedAt!: string | null;
+  @Expose() @ApiProperty({ type: String, nullable: true, format: 'date-time' }) closedAt!:
+    string | null;
 }
