@@ -78,6 +78,8 @@
     "dev:prepare": "node scripts/dev.mjs prepare",
     "dev:token": "node scripts/dev.mjs token",
     "dev:credentials": "node scripts/dev.mjs credentials",
+    "web:build": "npm --prefix web run build",
+    "web:test": "node scripts/test-web.mjs",
     "db:seed": "node scripts/seed.mjs",
     "demo": "node scripts/demo.mjs",
     "openapi": "node scripts/openapi.mjs"

@@ -1,6 +1,70 @@
-# Program Capacity Service
+# Program Capacity
 
-Authenticated NestJS API for invoice reservations, fixed FX and treasury reconciliation. PostgreSQL is the source of truth; Kafka delivers treasury updates.
+An authenticated NestJS backend and React operator workspace for invoice capacity reservation, full release and version-aware treasury reconciliation over Kafka. The API follows the self-contained NestJS Developer / NestJS Core standard. The interface uses an original Program Capacity identity with a light, blue-accented financial dashboard inspired by the supplied visual reference.
+
+## Open the workspace
+
+```sh
+docker compose run --build --rm tools npm run dev:prepare
+docker compose up --build -d --wait
+docker compose run --rm -T tools npm run dev:credentials
+```
+
+Open **http://localhost:8080** and sign in with the locally generated credentials. The preparation command adds missing demo credentials to ignored `.dev/runtime.env` without replacing existing secrets. The seed creates the demo operator with USER and TREASURY roles, preserving an existing account and password. No credentials or tokens are embedded in the frontend bundle.
+
+The workspace contains Overview, Reservations, Activity and Treasury. Choose a program from the selector. Each program begins in `RECONCILIATION_REQUIRED` after a service start. In **Treasury → Local demo controls**, click **Apply fresh snapshot** and wait for **Applied** before creating new reservations. Viewing a page never creates financial operations. The second program is reconciled independently.
+
+The web container serves local static assets and proxies `/api/v1` to the existing API and `/demo-api` to the internal-only demo publisher. The API remains available on port 3000. The React package lives in `web/`, has a separate lockfile and uses plain CSS, self-hosted Inter and locally saved decorative images generated through the ChatGPT website. Its build and runtime use the existing pinned Node.js 24 base image.
+
+### Browser session and commands
+
+The access token stays in memory and the rotating refresh token stays in tab-scoped `sessionStorage`. A shared rotation request handles concurrent expiry; page reload restores the session through the normal refresh endpoint. Successful logout revokes the PostgreSQL session and clears all workspace state. A failed infrastructure request to logout is reported without claiming revocation succeeded.
+
+Money and versions remain decimal strings; amount validation and display calculations use bigint minor units. Cross-currency reservation displays the **saved** FX rate and source after creation. FX quotes are fixtures, not live market data. Reserve and release retain the same idempotency key after an unknown/network outcome. Retry the exact request to retrieve its durable result; changing the invoice or amount constitutes a new command.
+
+Reads refresh after commands, on window focus and every ten seconds while visible. A resource never has overlapping background polls. Lists include loading, empty, forbidden, validation, business-conflict and infrastructure-error states. Financial operations are always authorized by the API, even when their controls are hidden or disabled in the browser.
+
+### Kafka demo from the interface
+
+The local `demo-tools` container is a Kafka producer with no database connection or direct financial writes. It checks the current session and treasury permission on the exact core API resource before publishing, accepts only the two seeded demo programs in `demo-tenant`, validates the existing event schema and rejects envelopes exceeding 2 MiB. It has no published host port. Set `LOCAL_DEMO_ENABLED=false` when starting Compose to disable publication; this tool is intended solely for local demonstration.
+
+1. Apply a fresh snapshot for the first program.
+2. Publish a new program limit, then reserve an invoice in EUR from Reservations.
+3. Capture a snapshot in Treasury. Create another reservation, then publish the captured snapshot.
+4. Observe **State version conflict** in the durable event history. The reservation remains present and new reservations are paused.
+5. Apply a fresh snapshot to recover, then release the invoice from its detail dialog.
+
+**Published** means Kafka acknowledged delivery. **Applied** and rejection reasons come from the committed PostgreSQL inbox. An unknown publication can be retried with the exact same stored event ID/envelope. **Check result** reads the inbox without publishing again. A reconnection alone does not restore readiness.
+
+### Additional read APIs
+
+All routes require an active session and use the existing success/data/meta, numeric-error and 422-validation contracts. Collection queries accept `page` (default 1) and `perPage` (default 10, maximum 100). Tenant scope is enforced inside DA queries.
+
+| Route after `/api/v1` | Access | Notes |
+| --- | --- | --- |
+| `GET /programs` | capacity read | Capacity summary and active count, ordered by ID |
+| `GET /programs/:programId/reservations` | capacity read | Includes terminal rows; optional `status`, `currency`, case-insensitive invoice substring `invoiceId`; newest first with ID tie-breaker |
+| `GET /programs/:programId/movements` | capacity read | Signed decimal-string deltas, newest state version first; internal actor/operation identity omitted |
+| `GET /internal/programs/:programId/treasury-events` | treasury reconcile | Optional UUID `eventId`; newest first with ID tie-breaker; no payload, raw bytes, coordinates or fingerprints |
+
+Program discovery reads all collection pages; the selector has no fixed 100-program truncation. Snapshot export uses the complete consistent reconciliation view and never reconstructs it from a paginated reservations list.
+
+### Frontend verification
+
+```sh
+npm ci --prefix web
+npm --prefix web run typecheck
+npm --prefix web run lint
+npm --prefix web test
+npm --prefix web run build
+npx --prefix web playwright install chromium
+docker compose build app web
+npm run web:test
+```
+
+`web:test` owns an ephemeral `app_test_web` database, a Kafka broker, and separate Node.js 24 API/demo/web containers. It never resets development Compose databases. Browser scenarios cover real login/refresh/logout, roles and tenant isolation, FX reserve/release, a lost response followed by the same idempotency key, error presentation, actual Kafka updates, stale snapshots and recovery. The harness also checks financial aggregates against reservations and the movement ledger, idempotency and inbox results. Targeted HTTP fault injection covers transport failures; ordinary financial and Kafka scenarios use the actual services.
+
+Responsive checks cover 1440, 1280, 768 and 390 px, keyboard dialog focus and local asset loading. Set `WEB_SCREENSHOT_DIR` to save visual verification screenshots. Browser dependencies run on the test host; application containers use Node.js 24. Docker Engine must be running. For local frontend development use `npm --prefix web run dev` with the API on port 3000 and explicitly configured access to demo-tools; the default complete workflow remains Compose on port 8080.
 
 ## Run locally
 

@@ -78,7 +78,37 @@ services:
     profiles: ['tools']
     volumes: ['./.dev:/app/.dev']
     command: ['npm', 'run', 'dev:prepare']
-
+  demo-tools:
+    <<: *app
+    environment:
+      <<: *environment
+      LOCAL_DEMO_ENABLED: '${LOCAL_DEMO_ENABLED:-true}'
+    depends_on:
+      app: { condition: service_healthy }
+    command: ['node', 'scripts/demo-tools.mjs']
+    init: true
+    stop_grace_period: 20s
+    healthcheck:
+      test: ['CMD', 'node', '-e', "const s=require('net').connect(3001,'127.0.0.1',()=>{s.end();process.exit(0)});s.on('error',()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+  web:
+    image: program-capacity-web:local
+    build: ./web
+    ports: ['127.0.0.1:8080:8080']
+    environment:
+      API_UPSTREAM: http://app:3000
+      DEMO_UPSTREAM: http://demo-tools:3001
+    depends_on:
+      app: { condition: service_healthy }
+      demo-tools: { condition: service_healthy }
+    init: true
+    healthcheck:
+      test: ['CMD', 'node', '-e', "fetch('http://127.0.0.1:8080/').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
 volumes:
   postgres-data:
   kafka-data:
