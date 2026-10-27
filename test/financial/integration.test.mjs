@@ -17,7 +17,7 @@ import { CapacityService } from '../../dist/core/routes/capacity/layers/capacity
 import { ConsumerHealth } from '../../dist/core/providers/kafka/consumer-health.provider.js';
 import { FxRateProvider } from '../../dist/core/providers/fx/fx-rate.provider.js';
 import { TreasuryService } from '../../dist/core/routes/treasury/layers/treasury-bl/treasury.service.js';
-import { DIRECTION, MAX_EVENT_BYTES } from '../../dist/helpers/capacity.helpers.js';
+import { DIRECTION, MAX_EVENT_BYTES, fingerprint } from '../../dist/helpers/capacity.helpers.js';
 import { TreasuryConsumer } from '../../dist/core/providers/kafka/treasury-consumer.provider.js';
 
 import { validateEnvironment } from '../../dist/config/environment.config.js';
@@ -477,6 +477,122 @@ describe('PostgreSQL financial concurrency', () => {
   });
 });
 describe('treasury reconciliation and deduplication', () => {
+  test.each([false, true])(
+    'snapshot accepts uppercase reservation UUIDs with uppercase program UUIDs: %s, retaining replay fingerprints',
+    async (uppercaseProgram) => {
+      const f = await fixture();
+      const r = await f.service.reserve(f.principal, f.id, input('1'), key(), key());
+      const original = await db.reservation.findUniqueOrThrow({ where: { id: r.body.id } });
+      const e = await snapshot(f);
+      e.payload.reservations = e.payload.reservations.map((row) => ({
+        ...row,
+        id: row.id.toUpperCase(),
+        programId: uppercaseProgram ? row.programId.toUpperCase() : row.programId,
+      }));
+      expect((await apply(f, e)).code).toBe('APPLIED');
+      const applied = await db.program.findUniqueOrThrow({ where: { id: f.id } });
+      expect(applied).toMatchObject({
+        syncStatus: 'READY', reservedMinor: 100n, stateVersion: 2n, lastAppliedTreasuryRevision: 1n,
+      });
+      const inbox = await db.treasuryInbox.findUniqueOrThrow({
+        where: { source_eventId: { source: 'test-treasury', eventId: e.eventId } },
+      });
+      expect(inbox.payload).toEqual(e);
+      expect(inbox.fingerprint).toBe(fingerprint(e));
+      expect(inbox.revisionFingerprint).toBe(fingerprint({
+        type: e.type,
+        tenantId: e.tenantId,
+        programId: e.programId,
+        revision: e.treasuryRevision,
+        payload: e.payload,
+      }));
+      expect((await apply(f, e)).code).toBe('APPLIED');
+      expect(await db.program.findUniqueOrThrow({ where: { id: f.id } })).toEqual(applied);
+      expect(await db.reservation.findUniqueOrThrow({ where: { id: r.body.id } })).toEqual(original);
+      expect(await db.reservation.count({ where: { programId: f.id } })).toBe(1);
+      expect(await db.capacityMovement.count({ where: { programId: f.id } })).toBe(2);
+      await assertAggregate(f.id);
+      expect((await f.service.reserve(f.principal, f.id, input('1'), key(), key())).status).toBe(201);
+      await assertAggregate(f.id);
+    },
+  );
+  test('snapshot restores uppercase UUIDs and keeps case-distinct invoice IDs separate', async () => {
+    const f = await fixture();
+    await f.service.reserve(f.principal, f.id, input('1', 'USD', 'Invoice-Case'), key(), key());
+    const e = await snapshot(f);
+    const id = key().toUpperCase();
+    e.payload.reservations.push({
+      ...e.payload.reservations[0], id, programId: f.id.toUpperCase(), invoiceId: 'INVOICE-CASE',
+    });
+    expect((await apply(f, e)).code).toBe('APPLIED');
+    expect(await db.reservation.findUniqueOrThrow({ where: { id } })).toMatchObject({
+      id: id.toLowerCase(), programId: f.id, invoiceId: 'INVOICE-CASE', status: 'ACTIVE', reservedMinor: 100n,
+    });
+    expect(await db.reservation.count({ where: { programId: f.id, status: 'ACTIVE' } })).toBe(2);
+    expect(await db.program.findUniqueOrThrow({ where: { id: f.id } })).toMatchObject({
+      syncStatus: 'READY', reservedMinor: 200n, stateVersion: 2n,
+    });
+    await assertAggregate(f.id);
+  });
+  test('snapshot rejects duplicate reservation UUIDs in different cases before financial changes', async () => {
+    const f = await fixture();
+    const r = await f.service.reserve(f.principal, f.id, input('1'), key(), key());
+    const original = await db.reservation.findUniqueOrThrow({ where: { id: r.body.id } });
+    const e = await snapshot(f);
+    e.payload.reservations.push({ ...e.payload.reservations[0], id: r.body.id.toUpperCase(), invoiceId: key() });
+    expect((await apply(f, e)).code).toBe('DUPLICATE_SNAPSHOT_ROW');
+    expect(await db.program.findUniqueOrThrow({ where: { id: f.id } })).toMatchObject({
+      syncStatus: 'RECONCILIATION_REQUIRED', reservedMinor: 100n, stateVersion: 1n, lastAppliedTreasuryRevision: 0n,
+    });
+    expect(await db.reservation.findUniqueOrThrow({ where: { id: r.body.id } })).toEqual(original);
+    expect(await db.capacityMovement.count({ where: { programId: f.id } })).toBe(1);
+    await assertAggregate(f.id);
+  });
+  test.each([false, true])('snapshot rejects a different program UUID, uppercase: %s', async (uppercaseProgram) => {
+    const f = await fixture();
+    const foreign = await db.program.create({
+      data: { id: key(), tenantId: f.principal.tenantId, currency: 'USD', limitMinor: 10000n, syncStatus: 'READY' },
+    });
+    const r = await f.service.reserve(f.principal, f.id, input('1'), key(), key());
+    const original = await db.reservation.findUniqueOrThrow({ where: { id: r.body.id } });
+    const e = await snapshot(f);
+    e.payload.reservations[0].programId = uppercaseProgram ? foreign.id.toUpperCase() : foreign.id;
+    expect((await apply(f, e)).code).toBe('CURRENCY_OR_PROGRAM_CONFLICT');
+    expect(await db.program.findUniqueOrThrow({ where: { id: f.id } })).toMatchObject({
+      syncStatus: 'RECONCILIATION_REQUIRED', reservedMinor: 100n, stateVersion: 1n, lastAppliedTreasuryRevision: 0n,
+    });
+    expect(await db.program.findUniqueOrThrow({ where: { id: foreign.id } })).toEqual(foreign);
+    expect(await db.reservation.findUniqueOrThrow({ where: { id: r.body.id } })).toEqual(original);
+    expect(await db.capacityMovement.count({ where: { programId: f.id } })).toBe(1);
+    await assertAggregate(f.id);
+  });
+  test('snapshot keeps existing invoice IDs case-sensitive', async () => {
+    const f = await fixture();
+    const r = await f.service.reserve(f.principal, f.id, input('1', 'USD', 'Invoice-Case'), key(), key());
+    const original = await db.reservation.findUniqueOrThrow({ where: { id: r.body.id } });
+    const e = await snapshot(f);
+    e.payload.reservations[0].invoiceId = 'INVOICE-CASE';
+    expect((await apply(f, e)).code).toBe('RESERVATION_CONFLICT');
+    expect(await db.program.findUniqueOrThrow({ where: { id: f.id } })).toMatchObject({
+      syncStatus: 'RECONCILIATION_REQUIRED', reservedMinor: 100n, stateVersion: 1n, lastAppliedTreasuryRevision: 0n,
+    });
+    expect(await db.reservation.findUniqueOrThrow({ where: { id: r.body.id } })).toEqual(original);
+    expect(await db.capacityMovement.count({ where: { programId: f.id } })).toBe(1);
+    await assertAggregate(f.id);
+  });
+  test('snapshot keeps tenant IDs case-sensitive with a matching partition key', async () => {
+    const f = await fixture();
+    const r = await f.service.reserve(f.principal, f.id, input('1'), key(), key());
+    const original = await db.reservation.findUniqueOrThrow({ where: { id: r.body.id } });
+    const program = await db.program.findUniqueOrThrow({ where: { id: f.id } });
+    const e = await snapshot(f);
+    e.tenantId = e.tenantId.toUpperCase();
+    expect((await apply(f, e)).code).toBe('UNKNOWN_PROGRAM');
+    expect(await db.program.findUniqueOrThrow({ where: { id: f.id } })).toEqual(program);
+    expect(await db.reservation.findUniqueOrThrow({ where: { id: r.body.id } })).toEqual(original);
+    expect(await db.capacityMovement.count({ where: { programId: f.id } })).toBe(1);
+    await assertAggregate(f.id);
+  });
   test('event replay, conflicting event ID and malformed quarantine have no repeated financial effect', async () => {
     const f = await fixture();
     const e = event(f, '1', 'ProgramLimitUpdated', { currency: 'USD', limit: '150' });

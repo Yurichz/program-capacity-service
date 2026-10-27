@@ -261,7 +261,11 @@ export class TreasuryClService {
     const ids = new Set<string>();
     const invoices = new Set<string>();
     let total = 0n;
-    for (const row of [...event.payload.reservations].sort((a, b) => a.id.localeCompare(b.id))) {
+    // Normalize local copies so inbox payloads and fingerprints retain the original UUID casing.
+    const reservations = event.payload.reservations
+      .map((row) => ({ ...row, id: row.id.toLowerCase(), programId: row.programId.toLowerCase() }))
+      .sort((a, b) => a.id.localeCompare(b.id));
+    for (const row of reservations) {
       if (ids.has(row.id) || invoices.has(row.invoiceId)) return 'DUPLICATE_SNAPSHOT_ROW';
       ids.add(row.id);
       invoices.add(row.invoiceId);
