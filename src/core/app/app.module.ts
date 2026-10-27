@@ -35,6 +35,7 @@ import { randomUUID } from 'node:crypto';
         level: process.env.LOG_LEVEL ?? 'info',
         genReqId: (_request, response) => {
           const id = randomUUID();
+
           response.setHeader('X-Request-Id', id);
 
           return id;

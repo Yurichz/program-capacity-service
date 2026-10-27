@@ -5,6 +5,7 @@ import { join } from 'node:path';
 
 test.describe.configure({ mode: 'serial' });
 const firstProgram = '11111111-1111-4111-8111-111111111111';
+
 async function login(
   page: Page,
   email = process.env.E2E_EMAIL!,
@@ -28,6 +29,7 @@ async function applyFresh(page: Page) {
 async function expectSameRow(...controls: Locator[]) {
   const boxes = await Promise.all(controls.map((control) => control.boundingBox()));
   const first = boxes[0]!;
+
   expect(first).not.toBeNull();
   for (const box of boxes.slice(1)) {
     expect(box).not.toBeNull();
@@ -41,6 +43,7 @@ async function reserve(page: Page, invoice: string, amount = '1250.50', currency
     name: 'New reservation',
     exact: true,
   });
+
   await dialog.getByLabel('Invoice ID', { exact: true }).fill(invoice);
   await dialog.getByLabel('Amount', { exact: true }).fill(amount);
   await dialog.getByLabel('Currency', { exact: true }).selectOption(currency);
@@ -64,6 +67,7 @@ test('login, real Kafka reconciliation, cross-currency reserve/release and stale
   await applyFresh(page);
   const invoice = `EUR-${randomUUID()}`;
   const detail = await reserve(page, invoice);
+
   await expect(detail.getByRole('heading', { name: 'USD 1,375.55' })).toBeVisible();
   await expect(detail.getByText(/1.1 USD \/ EUR/)).toBeVisible();
   await detail.getByRole('button', { name: 'Close dialog' }).click();
@@ -71,6 +75,7 @@ test('login, real Kafka reconciliation, cross-currency reserve/release and stale
   await page.getByRole('button', { name: 'Capture snapshot', exact: true }).click();
   await expect(page.getByText(/Captured at version/)).toBeVisible();
   const second = await reserve(page, `STALE-${randomUUID()}`, '25.00', 'USD');
+
   await expect(second).toBeVisible();
   await second.getByRole('button', { name: 'Close dialog' }).click();
   await treasury(page);
@@ -82,8 +87,10 @@ test('login, real Kafka reconciliation, cross-currency reserve/release and stale
   await page.getByRole('button', { name: 'Publish limit update', exact: true }).click();
   await expect(page.locator('.event-outcome > strong')).toHaveText('Applied');
   const downloadPromise = page.waitForEvent('download');
+
   await page.getByRole('button', { name: 'Export JSON' }).click();
   const download = await downloadPromise;
+
   expect(download.suggestedFilename()).toContain(firstProgram);
   await page.getByRole('link', { name: 'Reservations', exact: true }).click();
   await page.getByLabel('Search invoices').fill(invoice);
@@ -93,6 +100,7 @@ test('login, real Kafka reconciliation, cross-currency reserve/release and stale
     name: 'Reservation details',
     exact: true,
   });
+
   await release.getByRole('button', { name: 'Release reservation', exact: true }).click();
   await release.getByRole('button', { name: 'Confirm release', exact: true }).click();
   await expect(release.getByText('Released', { exact: true })).toBeVisible();
@@ -118,8 +126,10 @@ test('lost HTTP response retries one operation with the same idempotency key; er
   await page.getByLabel('Program', { exact: true }).selectOption(firstProgram);
   let first = true;
   const keys: string[] = [];
+
   await page.route(`**/api/v1/programs/${firstProgram}/reservations`, async (route) => {
     if (route.request().method() !== 'POST') return route.continue();
+
     keys.push(route.request().headers()['idempotency-key']);
     if (first) {
       first = false;
@@ -132,6 +142,7 @@ test('lost HTTP response retries one operation with the same idempotency key; er
     name: 'New reservation',
     exact: true,
   });
+
   await expect(form.getByRole('alert')).toContainText('outcome is unknown');
   await form.getByRole('button', { name: 'Retry exact request', exact: true }).click();
   await expect(
@@ -143,6 +154,7 @@ test('lost HTTP response retries one operation with the same idempotency key; er
   await page.unroute(`**/api/v1/programs/${firstProgram}/reservations`);
   const known = `DUPLICATE-${randomUUID()}`;
   const detail = await reserve(page, known, '1.00', 'USD');
+
   await expect(detail).toBeVisible();
   await detail.getByRole('button', { name: 'Close dialog' }).click();
   await reserve(page, known, '1.00', 'USD');
@@ -169,6 +181,7 @@ test('lost HTTP response retries one operation with the same idempotency key; er
   await page.getByRole('button', { name: 'Cancel', exact: true }).click();
   await page.unroute(`**/api/v1/programs/${firstProgram}/reservations`);
   let outage = true;
+
   await page.route('**/api/v1/programs?*', async (route) => {
     if (outage)
       await route.fulfill({
@@ -194,6 +207,7 @@ test('refresh survives reload, concurrent expired-token requests rotate once, lo
   await page.reload();
   await expect(page.getByRole('heading', { name: 'Overview', exact: true })).toBeVisible();
   let rotations = 0;
+
   page.on('request', (request) => {
     if (request.url().endsWith('/auth/token/refresh')) rotations++;
   });
@@ -230,6 +244,7 @@ test('responsive layouts, keyboard dialog focus, no console errors or missing lo
 }) => {
   const errors: string[] = [];
   const missing: string[] = [];
+
   page.on('pageerror', (error) => errors.push(error.message));
   page.on('response', (response) => {
     if (response.status() === 404 && /\.(png|svg|woff2|css|js)$/.test(response.url()))
@@ -238,7 +253,9 @@ test('responsive layouts, keyboard dialog focus, no console errors or missing lo
   await login(page);
   await page.getByLabel('Program', { exact: true }).selectOption(firstProgram);
   const directory = process.env.WEB_SCREENSHOT_DIR;
+
   if (directory) await mkdir(directory, { recursive: true });
+
   for (const width of [1440, 1280, 768, 390]) {
     await page.setViewportSize({ width, height: 1000 });
     await page.goto('/overview');
@@ -253,6 +270,7 @@ test('responsive layouts, keyboard dialog focus, no console errors or missing lo
         fullPage: true,
       });
   }
+
   await page.getByRole('button', { name: 'Open navigation' }).click();
   await page.getByRole('link', { name: 'Reservations', exact: true }).click();
   await page.getByRole('button', { name: 'New reservation', exact: true }).click();
@@ -261,6 +279,7 @@ test('responsive layouts, keyboard dialog focus, no console errors or missing lo
     name: 'New reservation',
     exact: true,
   });
+
   await page.keyboard.press('Shift+Tab');
   await expect(dialog.getByRole('button', { name: 'Close dialog' })).toBeFocused();
   await page.keyboard.press('Escape');
@@ -289,6 +308,7 @@ test('form controls and action rows stay aligned across responsive layouts', asy
     });
     const inputBox = (await field.boundingBox())!;
     const buttonBox = (await publish.boundingBox())!;
+
     expect(Math.abs(inputBox.height - buttonBox.height)).toBeLessThanOrEqual(1);
     if (buttonBox.y < inputBox.y + inputBox.height) {
       await expectSameRow(field, publish);
@@ -299,9 +319,11 @@ test('form controls and action rows stay aligned across responsive layouts', asy
       expect(Math.abs(buttonBox.width - inputBox.width)).toBeLessThanOrEqual(1);
       expect(buttonBox.y - inputBox.y - inputBox.height).toBeCloseTo(10, 0);
     }
+
     const snapshotButtons = page.locator('.demo-buttons .button');
     const a = (await snapshotButtons.nth(0).boundingBox())!;
     const b = (await snapshotButtons.nth(1).boundingBox())!;
+
     expect(Math.abs(a.height - b.height)).toBeLessThanOrEqual(1);
     if (b.y < a.y + a.height) await expectSameRow(snapshotButtons.nth(0), snapshotButtons.nth(1));
     else expect(Math.abs(a.x + a.width / 2 - b.x - b.width / 2)).toBeLessThanOrEqual(1);
@@ -317,11 +339,13 @@ test('form controls and action rows stay aligned across responsive layouts', asy
         page.locator('.search-field'),
         page.getByLabel('Status', { exact: true }),
       );
+
     await page.getByRole('button', { name: 'New reservation', exact: true }).click();
     const dialog = page.getByRole('dialog', {
       name: 'New reservation',
       exact: true,
     });
+
     await expectSameRow(
       dialog.getByLabel('Amount', { exact: true }),
       dialog.getByLabel('Currency', { exact: true }),

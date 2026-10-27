@@ -13,6 +13,7 @@ const codes: Record<string, number> = {
   FX_UNAVAILABLE: 503100,
   SERVICE_UNAVAILABLE: 503000,
 };
+
 export function domainErrorCode(reason: string, status: number): number {
   return codes[reason] ?? status * 1000;
 }

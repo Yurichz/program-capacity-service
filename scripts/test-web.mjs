@@ -14,6 +14,7 @@ const kafkaImage =
 const owned = [];
 let network;
 let db;
+
 try {
   network = await new Network().start();
   const postgres = await new PostgreSqlContainer(postgresImage)
@@ -21,8 +22,10 @@ try {
     .withNetwork(network)
     .withNetworkAliases('postgres')
     .start();
+
   owned.push(postgres);
   const url = postgres.getConnectionUri();
+
   assert.ok(new URL(url).pathname.startsWith('/app_test_'));
   const env = {
     ...process.env,
@@ -34,6 +37,7 @@ try {
     NODE_ENV: 'test',
     LOG_LEVEL: 'silent',
   };
+
   execFileSync(process.execPath, ['node_modules/prisma/build/index.js', 'migrate', 'deploy'], {
     env,
     stdio: 'inherit',
@@ -46,6 +50,7 @@ try {
   const seeded = await db.user.findUniqueOrThrow({
     where: { email: env.DEMO_EMAIL },
   });
+
   execFileSync(process.execPath, ['scripts/seed.mjs'], {
     env,
     stdio: 'inherit',
@@ -56,6 +61,7 @@ try {
   );
   assert.equal(await db.program.count(), 2);
   const readPassword = randomBytes(24).toString('base64url');
+
   await db.user.create({
     data: {
       email: 'reader@capacity.local',
@@ -66,6 +72,7 @@ try {
     },
   });
   const foreignPassword = randomBytes(24).toString('base64url');
+
   await db.user.create({
     data: {
       email: 'foreign@capacity.local',
@@ -99,6 +106,7 @@ try {
     .withWaitStrategy(Wait.forLogMessage(/Kafka Server started/))
     .withStartupTimeout(120000)
     .start();
+
   owned.push(broker);
   const topic = 'treasury.capacity.v1';
   const created = await broker.exec([
@@ -115,6 +123,7 @@ try {
     '--config',
     'max.message.bytes=3145728',
   ]);
+
   assert.equal(created.exitCode, 0);
   const internalEnv = {
     DATABASE_URL: `postgresql://${postgres.getUsername()}:${postgres.getPassword()}@postgres:5432/app_test_web`,
@@ -136,6 +145,7 @@ try {
     .withWaitStrategy(Wait.forListeningPorts())
     .withStartupTimeout(120000)
     .start();
+
   owned.push(app);
   const demo = await new GenericContainer(process.env.TOOLS_IMAGE ?? 'program-capacity-tools:local')
     .withNetwork(network)
@@ -145,6 +155,7 @@ try {
     .withCommand(['node', 'scripts/demo-tools.mjs'])
     .withWaitStrategy(Wait.forListeningPorts())
     .start();
+
   owned.push(demo);
   const web = await new GenericContainer(process.env.WEB_IMAGE ?? 'program-capacity-web:local')
     .withNetwork(network)
@@ -155,6 +166,7 @@ try {
     .withExposedPorts(8080)
     .withWaitStrategy(Wait.forListeningPorts())
     .start();
+
   owned.push(web);
   assert.equal((await web.exec(['id', '-u'])).output.trim(), '1000');
   assert.equal(
@@ -184,6 +196,7 @@ try {
     '/6000',
     '-print',
   ]);
+
   assert.equal(privileged.exitCode, 0);
   assert.equal(privileged.output.trim(), '');
   const testEnv = {
@@ -194,6 +207,7 @@ try {
     E2E_READER_PASSWORD: readPassword,
     E2E_FOREIGN_PASSWORD: foreignPassword,
   };
+
   console.log(
     'Browser tests use isolated app_test_web PostgreSQL, Kafka and Node 26 application containers.',
   );
@@ -203,9 +217,11 @@ try {
       env: testEnv,
       stdio: 'inherit',
     });
+
     child.on('error', reject);
     child.on('exit', resolve);
   });
+
   assert.equal(result, 0, 'Browser test failure');
   for (const p of await db.program.findMany()) {
     const active = await db.reservation.aggregate({
@@ -216,12 +232,15 @@ try {
       where: { programId: p.id },
       _sum: { reservedDelta: true },
     });
+
     assert.equal(p.reservedMinor, active._sum.reservedMinor ?? 0n);
     assert.equal(p.reservedMinor, movements._sum.reservedDelta ?? 0n);
   }
+
   const lost = await db.reservation.findMany({
     where: { invoiceId: { startsWith: 'NETWORK-' } },
   });
+
   assert.equal(lost.length, 1);
   assert.ok((await db.idempotencyRequest.count()) > 0);
   assert.ok(
@@ -238,5 +257,6 @@ try {
     await container
       .stop()
       .catch((error) => console.error('Test container cleanup failed:', error.message));
+
   await network?.stop();
 }

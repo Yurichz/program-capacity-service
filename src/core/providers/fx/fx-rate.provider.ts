@@ -3,6 +3,7 @@ import { type Currency, DIRECTION, fail } from '#helpers/capacity.helpers.js';
 
 export type Quote = { rate: string; source: string; asOf: Date; direction: string };
 export const FX_CLOCK = Symbol('fx-clock');
+
 @Injectable()
 export class FxRateProvider {
   constructor(@Optional() @Inject(FX_CLOCK) private readonly now: () => Date = () => new Date()) {}
@@ -15,6 +16,7 @@ export class FxRateProvider {
       'KWD:USD': '3.25',
     };
     const rate = from === to ? '1' : rates[`${from}:${to}`];
+
     if (!rate) return fail(503, 'FX_UNAVAILABLE', 'Unsupported demo FX pair');
 
     return {

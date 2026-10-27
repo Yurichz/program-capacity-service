@@ -35,11 +35,14 @@ export function createWebServer({
 
         return;
       }
+
       const url = new URL(req.url, 'http://web');
       const path = url.pathname;
+
       if (path.startsWith('/api/v1/') || path === '/api/v1' || path.startsWith('/demo-api/')) {
         const target = new URL(path + url.search, path.startsWith('/demo-api/') ? demo : api);
         const headers = { ...req.headers, host: target.host };
+
         for (const name of [
           'connection',
           'proxy-authorization',
@@ -51,6 +54,7 @@ export function createWebServer({
           'transfer-encoding',
         ])
           delete headers[name];
+
         const proxy = proxyRequest(
           target,
           { method: req.method, headers, timeout: 30000 },
@@ -65,6 +69,7 @@ export function createWebServer({
         );
         const fail = () => {
           if (!res.headersSent) res.writeHead(503, { 'content-type': 'application/json' });
+
           res.end(
             JSON.stringify({
               success: false,
@@ -75,6 +80,7 @@ export function createWebServer({
             }),
           );
         };
+
         proxy.on('error', fail);
         proxy.on('timeout', () => proxy.destroy());
         req.on('aborted', () => proxy.destroy());
@@ -85,26 +91,32 @@ export function createWebServer({
 
         return;
       }
+
       if (!['GET', 'HEAD'].includes(req.method)) {
         res.writeHead(405);
         res.end();
 
         return;
       }
+
       const file = resolve(root, '.' + decodeURIComponent(path));
+
       if (file !== root && !file.startsWith(root + sep)) {
         res.writeHead(404);
         res.end();
 
         return;
       }
+
       let selected = file;
       let info;
+
       try {
         info = await stat(selected);
       } catch {
         /* Known SPA routes use index.html below. */
       }
+
       if (!info?.isFile()) {
         if (
           !['/', '/login', '/overview', '/reservations', '/activity', '/treasury'].includes(path)
@@ -114,8 +126,10 @@ export function createWebServer({
 
           return;
         }
+
         selected = resolve(root, 'index.html');
       }
+
       res.writeHead(200, {
         'content-type': types[extname(selected)] ?? 'application/octet-stream',
         'cache-control': selected.includes(`${sep}assets${sep}`)
@@ -138,6 +152,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
     api: process.env.API_UPSTREAM,
     demo: process.env.DEMO_UPSTREAM,
   });
+
   server.listen(Number(process.env.PORT ?? 8080), '0.0.0.0');
   for (const signal of ['SIGINT', 'SIGTERM'])
     process.once(signal, () => {

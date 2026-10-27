@@ -8,6 +8,7 @@ test('dashboard read APIs use actual sessions, scoped queries and public represe
     'Run npm run test:core to provision an isolated TEST_DATABASE_URL',
   );
   const url = new URL(process.env.TEST_DATABASE_URL);
+
   assert.ok(url.pathname.startsWith('/app_test_'));
   Object.assign(process.env, {
     DATABASE_URL: url.href,
@@ -20,11 +21,13 @@ test('dashboard read APIs use actual sessions, scoped queries and public represe
   const { ConsumerHealth } =
     await import('../dist/core/providers/kafka/consumer-health.provider.js');
   const app = await createApplication();
+
   app.useLogger(false);
   await app.listen(0, '127.0.0.1');
   t.after(() => app.close());
   const origin = await app.getUrl(),
     db = app.get(PrismaService).root;
+
   app.get(ConsumerHealth).connected = true;
   async function request(path, { token, body, key, method = 'GET' } = {}) {
     const response = await fetch(origin + '/api/v1/' + path, {
@@ -54,6 +57,7 @@ test('dashboard read APIs use actual sessions, scoped queries and public represe
       body: { email, password },
     })
   ).body.data;
+
   await db.user.update({
     where: { id: user.id },
     data: { tenantId, roles: ['USER', 'TREASURY'] },
@@ -64,6 +68,7 @@ test('dashboard read APIs use actual sessions, scoped queries and public represe
       body: { email, password },
     })
   ).body.data.accessToken;
+
   await db.program.create({
     data: {
       id,
@@ -87,6 +92,7 @@ test('dashboard read APIs use actual sessions, scoped queries and public represe
     key: randomUUID(),
     body: { invoiceId: 'Alpha-1', amount: '12.34', currency: 'USD' },
   });
+
   assert.equal(a.status, 201);
   const b = await request(`programs/${id}/reservations`, {
     token,
@@ -94,6 +100,7 @@ test('dashboard read APIs use actual sessions, scoped queries and public represe
     key: randomUUID(),
     body: { invoiceId: 'Beta-2', amount: '10', currency: 'JPY' },
   });
+
   assert.equal(b.status, 201);
   await request(`programs/${id}/reservations/${a.body.data.id}/release`, {
     token,
@@ -106,6 +113,7 @@ test('dashboard read APIs use actual sessions, scoped queries and public represe
     async () => {
       assert.equal((await request('programs')).status, 401);
       const rows = await request('programs?perPage=1', { token });
+
       assert.equal(rows.status, 200);
       assert.equal(rows.body.meta.total, 1);
       assert.equal(rows.body.data[0].programId, id);
@@ -128,6 +136,7 @@ test('dashboard read APIs use actual sessions, scoped queries and public represe
     'reservation lists include terminal records, filters, pagination and public FX',
     async () => {
       const rows = await request(`programs/${id}/reservations`, { token });
+
       assert.equal(rows.body.meta.total, 2);
       assert.deepEqual(
         new Set(rows.body.data.map((r) => r.status)),
@@ -137,11 +146,13 @@ test('dashboard read APIs use actual sessions, scoped queries and public represe
         `programs/${id}/reservations?status=RELEASED&currency=USD&invoiceId=alpha`,
         { token },
       );
+
       assert.equal(filtered.body.meta.total, 1);
       assert.equal(filtered.body.data[0].invoiceId, 'Alpha-1');
       assert.equal(filtered.body.data[0].reservedAmount, '12.34');
       assert.equal(typeof filtered.body.data[0].fx.rate, 'string');
       const empty = await request(`programs/${id}/reservations?currency=KWD`, { token });
+
       assert.equal(empty.body.meta.lastPage, 1);
       assert.equal(empty.body.meta.next, null);
       for (const query of ['page=0', 'perPage=101', 'status=UNKNOWN', 'currency=XXX', 'extra=true'])
@@ -149,6 +160,7 @@ test('dashboard read APIs use actual sessions, scoped queries and public represe
           (await request(`programs/${id}/reservations?${query}`, { token })).status,
           422,
         );
+
       for (const route of [`programs/${foreignId}/reservations`, `programs/${foreignId}/movements`])
         assert.equal((await request(route, { token })).status, 404);
     },
@@ -159,6 +171,7 @@ test('dashboard read APIs use actual sessions, scoped queries and public represe
       const rows = await request(`programs/${id}/movements?perPage=2`, {
         token,
       });
+
       assert.equal(rows.body.meta.total, 3);
       assert.equal(rows.body.data.length, 2);
       assert.equal(rows.body.data[0].reservedDelta, '-12.34');
@@ -171,6 +184,7 @@ test('dashboard read APIs use actual sessions, scoped queries and public represe
     'treasury inbox reads enforce permission and redact payload, coordinates and fingerprints',
     async () => {
       const eventId = randomUUID();
+
       await db.treasuryInbox.create({
         data: {
           id: randomUUID(),
@@ -191,6 +205,7 @@ test('dashboard read APIs use actual sessions, scoped queries and public represe
       const rows = await request(`internal/programs/${id}/treasury-events?eventId=${eventId}`, {
         token,
       });
+
       assert.equal(rows.status, 200);
       assert.equal(rows.body.meta.total, 1);
       assert.equal(rows.body.data[0].resultCode, 'APPLIED');
@@ -204,6 +219,7 @@ test('dashboard read APIs use actual sessions, scoped queries and public represe
         'offset',
       ])
         assert.ok(!Object.hasOwn(rows.body.data[0], key));
+
       assert.equal(
         (await request(`internal/programs/${id}/treasury-events?eventId=bad`, { token })).status,
         422,

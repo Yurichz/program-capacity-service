@@ -17,6 +17,7 @@ test('pagination uses consistent bounds and explicit result', async () => {
     2,
     10,
   );
+
   assert.ok(result instanceof ApiResult);
   assert.deepEqual(result.meta, {
     total: 21,
@@ -30,6 +31,7 @@ test('pagination uses consistent bounds and explicit result', async () => {
     async () => [],
     async () => 0,
   );
+
   assert.deepEqual(empty.meta, {
     total: 0,
     lastPage: 1,
@@ -65,6 +67,7 @@ test('configuration fails without valid distinct secrets and has typed defaults'
     JWT_ACCESS_SECRET: 'a'.repeat(40),
     JWT_REFRESH_SECRET: 'b'.repeat(40),
   };
+
   assert.equal(validateEnvironment({ ...env, PORT: '3001' }).PORT, 3001);
   assert.equal(validateEnvironment(env).ACCESS_TOKEN_TTL_SECONDS, 900);
   assert.throws(

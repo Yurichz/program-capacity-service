@@ -30,24 +30,34 @@ export class AccessGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest<AuthorizableRequest>();
+
     if (!request.user) throw new UnauthorizedException();
+
     const rule = this.reflector.getAllAndOverride<AbilityMetadata>(ACCESS_ABILITY, [
       context.getHandler(),
       context.getClass(),
     ]);
+
     if (!rule) throw new ForbiddenException();
+
     const ability = this.factory.createForUser(request.user);
+
     if (rule.hook) {
       const resource = await this.modules.get(rule.hook, { strict: false }).run(request);
+
       if (!resource) throw new NotFoundException();
+
       if (!ability.can(rule.action, rule.target)) throw new ForbiddenException();
+
       if (!ability.can(rule.action, subject(rule.target as string, resource)))
         throw new NotFoundException();
 
       return true;
     }
+
     // Conditions on a resource require its hook; checking the class alone cannot establish ownership.
     const relevant = ability.rulesFor(rule.action, rule.target as string);
+
     if (!ability.can(rule.action, rule.target) || relevant.some((item) => item.conditions))
       throw new ForbiddenException();
 

@@ -70,8 +70,10 @@ export function validateEnvironment(input: Record<string, unknown>): Environment
   );
   const value = plainToInstance(Environment, selected);
   const errors = validateSync(value, { validationError: { target: false, value: false } });
+
   if (errors.length)
     throw new Error(`Invalid environment: ${errors.map((error) => error.property).join(', ')}`);
+
   if (value.JWT_ACCESS_SECRET === value.JWT_REFRESH_SECRET)
     throw new Error('JWT secrets must differ');
 

@@ -20,9 +20,12 @@ export async function token(
   identifier.parse(clientId);
   const settings = validateEnvironment(process.env);
   const roles = [];
+
   if (permissions.includes('reservations:write')) roles.push('USER');
   else if (permissions.includes('capacity:read')) roles.push('READ_ONLY');
+
   if (permissions.includes('treasury:reconcile')) roles.push('TREASURY');
+
   if (
     permissions.some(
       (permission) =>
@@ -30,7 +33,9 @@ export async function token(
     )
   )
     throw new Error('Unknown development permission');
+
   const db = database(settings.DATABASE_URL);
+
   try {
     const email =
       createHash('sha256').update(`${tenantId}:${clientId}`).digest('hex') + '@dev.capacity.local';
@@ -48,6 +53,7 @@ export async function token(
     const tokens = new TokenService(new JwtService(), new ConfigService(settings));
     const sid = randomUUID(),
       pair = await tokens.issue(user.id, sid);
+
     await new SessionRepository(prismaFor(db)).createSession({
       id: sid,
       userId: user.id,
@@ -73,22 +79,29 @@ if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) 
         { mode: 0o600 },
       );
     }
+
     const prepared = await readFile('.dev/runtime.env', 'utf8');
+
     if (!prepared.includes('JWT_ACCESS_SECRET=') || !prepared.includes('JWT_REFRESH_SECRET='))
       throw new Error('Existing runtime.env is incomplete; restore it explicitly');
+
     if (!prepared.endsWith('\n')) await appendFile('.dev/runtime.env', '\n');
+
     if (!prepared.includes('DEMO_EMAIL='))
       await appendFile('.dev/runtime.env', 'DEMO_EMAIL=operator@capacity.local\n');
+
     if (!prepared.includes('DEMO_PASSWORD='))
       await appendFile(
         '.dev/runtime.env',
         `DEMO_PASSWORD=${randomBytes(24).toString('base64url')}\n`,
       );
+
     console.log('Development signing secrets ready in ignored .dev/runtime.env');
     console.log('Demo credentials ready. Run npm run dev:credentials to display them locally.');
   } else if (process.argv[2] === 'credentials') {
     if (!process.env.DEMO_EMAIL || !process.env.DEMO_PASSWORD)
       throw new Error('Run dev:prepare first');
+
     console.log(`Email: ${process.env.DEMO_EMAIL}\nPassword: ${process.env.DEMO_PASSWORD}`);
   } else if (process.argv[2] === 'token')
     console.log(await token(process.argv[3], process.argv[4]?.split(','), process.argv[5]));

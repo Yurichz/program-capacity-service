@@ -22,6 +22,7 @@ const capture = (name) => (stream) =>
     logs.push(name + ': ' + chunk.toString());
     if (logs.length > 1000) logs.shift();
   });
+
 try {
   network = await new Network().start();
   const postgres = await new PostgreSqlContainer(POSTGRES_IMAGE)
@@ -29,14 +30,17 @@ try {
     .withNetwork(network)
     .withNetworkAliases('postgres')
     .start();
+
   owned.push(postgres);
   const url = testDatabaseUrl(postgres.getConnectionUri());
+
   prisma(['migrate', 'deploy'], { ...process.env, DATABASE_URL: url });
   db = database(url);
   const programId = randomUUID(),
     tenantId = 'smoke-' + randomUUID(),
     password = randomBytes(24).toString('base64url');
   const email = 'smoke@example.test';
+
   await db.program.create({
     data: { id: programId, tenantId, currency: 'USD', limitMinor: 10000000n },
   });
@@ -57,8 +61,10 @@ try {
     .withStartupTimeout(120000)
     .withLogConsumer(capture('kafka'))
     .start();
+
   owned.push(kafka);
   const topic = 'treasury-' + randomUUID();
+
   assert.equal(
     (
       await kafka.exec([
@@ -101,6 +107,7 @@ try {
     .withStartupTimeout(120000)
     .withLogConsumer(capture('app'))
     .start();
+
   owned.push(app);
   assert.equal((await app.exec(['id', '-u'])).output.trim(), '1000');
   assert.equal(
@@ -118,6 +125,7 @@ try {
     0,
   );
   const links = await app.exec(['ldd', '/usr/local/bin/node']);
+
   assert.equal(links.exitCode, 0);
   assert.doesNotMatch(links.output, /libacl|libblkid|libmount|libtinfo/);
   const privileged = await app.exec([
@@ -130,6 +138,7 @@ try {
     '/6000',
     '-print',
   ]);
+
   assert.equal(privileged.exitCode, 0);
   assert.equal(privileged.output.trim(), '');
   const clientEnv = {
@@ -141,6 +150,7 @@ try {
     DEMO_PROGRAM_ID: programId,
     DEMO_TENANT_ID: tenantId,
   };
+
   async function scenario(command = ['node', 'scripts/smoke-client.mjs']) {
     const client = await new GenericContainer(
       process.env.TOOLS_IMAGE ?? 'program-capacity-tools:local',
@@ -152,6 +162,7 @@ try {
       .withStartupTimeout(120000)
       .withLogConsumer(capture('client'))
       .start();
+
     owned.push(client);
   }
   await scenario();
@@ -164,6 +175,7 @@ try {
   );
   const runtime = await getContainerRuntimeClient(),
     container = runtime.container.getById(app.getId());
+
   await container.stop({ t: 40 });
   assert.equal(
     (await container.inspect()).State.ExitCode,
@@ -174,6 +186,7 @@ try {
   const restarted = await container.inspect();
   const origin =
     'http://' + app.getHost() + ':' + restarted.NetworkSettings.Ports['3000/tcp'][0].HostPort;
+
   await waitFor(
     async () => {
       try {
@@ -199,6 +212,7 @@ try {
     where: { programId },
     _sum: { reservedDelta: true },
   });
+
   assert.equal(p.reservedMinor, 0n);
   assert.equal(ledger._sum.reservedDelta, 0n);
   console.log(

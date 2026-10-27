@@ -39,6 +39,7 @@ export function configureApplication(app: NestExpressApplication) {
         next();
       } catch (error) {
         const unauthorized = error instanceof UnauthorizedException;
+
         response.status(unauthorized ? 401 : 503).json({
           success: false,
           error: {
@@ -57,6 +58,7 @@ export function configureApplication(app: NestExpressApplication) {
       .addBearerAuth()
       .build(),
   );
+
   SwaggerModule.setup('docs', app, document);
 
   return app;

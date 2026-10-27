@@ -28,7 +28,9 @@ export class ResponseInterceptor implements NestInterceptor {
     return next.handle().pipe(
       map((value: unknown) => {
         if (context.switchToHttp().getResponse().statusCode === 204) return undefined;
+
         if (skip || value instanceof StreamableFile) return value;
+
         const result = value instanceof ApiResult ? value : new ApiResult(value);
         const data = result.data ?? null;
         const serialized =

@@ -87,6 +87,7 @@ const paths: Record<string, ReactNode> = {
   menu: <path d="M4 6h16M4 12h16M4 18h16" />,
   chevron: <path d="m9 5 7 7-7 7" />,
 };
+
 export function Icon({ name, size = 20 }: { name: string; size?: number }) {
   return (
     <svg
@@ -197,6 +198,7 @@ export function Loading() {
 }
 export function Pagination({ meta, change }: { meta?: Meta; change: (page: number) => void }) {
   if (!meta) return null;
+
   const start = meta.total ? (meta.currentPage - 1) * meta.perPage + 1 : 0;
 
   return (
@@ -244,9 +246,11 @@ export function Dialog({
   const ref = useRef<HTMLDialogElement>(null);
   const label = useId();
   const closeRef = useRef(close);
+
   closeRef.current = close;
   useEffect(() => {
     const previous = document.activeElement as HTMLElement | null;
+
     ref.current?.showModal();
     ref.current?.querySelector<HTMLElement>('[data-autofocus]')?.focus();
 

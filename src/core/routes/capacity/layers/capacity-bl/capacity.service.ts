@@ -28,7 +28,9 @@ export class CapacityService {
     permission: string,
   ): Promise<Program & { _count: { reservations: number } }> {
     const p = await this.repository.find(principal.tenantId, id);
+
     if (!p) return fail(404, 'NOT_FOUND', 'Program not found');
+
     if (!principal.permissions.includes(permission))
       return fail(403, 'FORBIDDEN', 'Permission required');
 
@@ -71,6 +73,7 @@ export class CapacityService {
   async programs(principal: Principal, query: ListQueryDto) {
     if (!principal.permissions.includes('capacity:read'))
       return fail(403, 'FORBIDDEN', 'Permission required');
+
     const result = await this.repository.programs(principal.tenantId, query);
 
     return new ApiResult(
@@ -118,6 +121,7 @@ export class CapacityService {
   async reservation(principal: Principal, id: string, reservationId: string) {
     const p = await this.access(principal, id, 'capacity:read');
     const r = await this.repository.readReservation(principal.tenantId, id, reservationId);
+
     if (!r) return fail(404, 'NOT_FOUND', 'Reservation not found');
 
     return reservationDto(r, currencySchema.parse(p.currency));

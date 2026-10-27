@@ -28,10 +28,13 @@ export class AuthService {
 
   async signIn(input: SignInDto) {
     const user = await this.users.findCredentials(input.email);
+
     if (!user || !(await this.passwords.compare(input.password, user.passwordHash)))
       throw new UnauthorizedException(ERRORS.INVALID_CREDENTIALS);
+
     const id = randomUUID();
     const pair = await this.tokens.issue(user.id, id);
+
     await this.sessions.createSession({
       id,
       userId: user.id,
@@ -52,6 +55,7 @@ export class AuthService {
       this.tokens.hashRefresh(pair.refreshToken),
       this.tokens.refreshExpiresAt(),
     );
+
     if (!rotated) throw new UnauthorizedException();
 
     return pair;

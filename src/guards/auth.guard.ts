@@ -26,7 +26,9 @@ export class AuthGuard implements CanActivate {
       ])
     )
       return true;
+
     const request = context.switchToHttp().getRequest<AuthorizableRequest>();
+
     request.user = await this.authenticate(request.headers.authorization);
 
     return true;
@@ -34,9 +36,12 @@ export class AuthGuard implements CanActivate {
 
   async authenticate(authorization?: string) {
     const match = /^Bearer ([^\s]+)$/i.exec(authorization ?? '');
+
     if (!match) throw new UnauthorizedException();
+
     const claims = await this.tokens.verify(match[1], 'access');
     const session = await this.sessions.findActive(claims.sid, Number(claims.sub));
+
     if (!session) throw new UnauthorizedException();
 
     return { ...session.user, sessionId: session.id };

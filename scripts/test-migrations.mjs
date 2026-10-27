@@ -11,17 +11,23 @@ const cluster = await new PostgreSqlContainer(POSTGRES_IMAGE)
   .withDatabase('app_test_migrations')
   .start();
 let db, scratch;
+
 try {
   const env = { ...process.env, DATABASE_URL: testDatabaseUrl(cluster.getConnectionUri()) };
+
   scratch = await mkdtemp(join(tmpdir(), 'capacity-migrations-'));
   const migrationPath = join(scratch, 'migrations');
+
   await mkdir(migrationPath);
   const names = (await readdir('prisma/migrations')).filter((name) => /^\d/.test(name)).sort();
+
   assert.ok(names.includes('202610270001_session_fk_consistency'));
   for (const name of names.filter((name) => name < '202610270001_session_fk_consistency'))
     await cp(join('prisma/migrations', name), join(migrationPath, name), { recursive: true });
+
   await cp('prisma/migrations/migration_lock.toml', join(migrationPath, 'migration_lock.toml'));
   const config = join(scratch, 'prisma.config.mjs');
+
   await writeFile(
     config,
     'export default ' +
@@ -36,6 +42,7 @@ try {
   const programId = randomUUID(),
     reservationId = randomUUID(),
     tenantId = 'migration-fixture';
+
   await db.program.create({
     data: {
       id: programId,
@@ -94,6 +101,7 @@ try {
       clientId: 'upgrade-client',
     },
   });
+
   await db.session.create({
     data: {
       id: randomUUID(),
@@ -141,9 +149,11 @@ try {
     'treasuryQuarantine',
   ];
   const before = await Promise.all(tables.map((table) => db[table].findMany()));
+
   // Apply every remaining migration to representative data; never rewrite old migration files.
   for (const name of names)
     await cp(join('prisma/migrations', name), join(migrationPath, name), { recursive: true });
+
   prisma(['migrate', 'deploy', '--config', config], env);
   assert.deepEqual(await Promise.all(tables.map((table) => db[table].findMany())), before);
   prisma(['migrate', 'deploy'], env);
@@ -164,14 +174,17 @@ try {
     await db.$queryRaw`SELECT conname FROM pg_constraint WHERE conname IN (
       'program_amounts','program_currency','reservation_money','reservation_terminal_time','inbox_revision','idempotency_result'
     )`;
+
   assert.equal(constraints.length, 6, 'Raw SQL checks must survive migrations');
   const triggers =
     await db.$queryRaw`SELECT tgname FROM pg_trigger
       WHERE NOT tgisinternal AND tgname IN ('movement_append_only','reservation_history') AND tgenabled <> 'D'`;
+
   assert.equal(triggers.length, 2);
   const fk =
     await db.$queryRaw`SELECT confupdtype::text AS confupdtype, confdeltype::text AS confdeltype
       FROM pg_constraint WHERE conname = 'Session_userId_fkey'`;
+
   assert.equal(fk[0].confupdtype, 'c');
   assert.equal(fk[0].confdeltype, 'c');
   await assert.rejects(
@@ -184,6 +197,7 @@ try {
   // Also prove all committed migrations deploy directly onto a completely empty schema.
   await db.$executeRaw`CREATE SCHEMA clean_migration`;
   const clean = new URL(env.DATABASE_URL);
+
   clean.searchParams.set('schema', 'clean_migration');
   prisma(['migrate', 'deploy'], { ...env, DATABASE_URL: clean.href });
   prisma(
@@ -206,6 +220,7 @@ try {
   } finally {
     await cluster.stop();
   }
+
   if (scratch) {
     assert.ok(resolve(scratch).startsWith(resolve(tmpdir()) + sep));
     await rm(scratch, { recursive: true, force: true });

@@ -13,6 +13,7 @@ const kafka = new Kafka({
   logLevel: logLevel.ERROR,
 });
 const producer = kafka.producer({ allowAutoTopicCreation: false });
+
 try {
   await producer.connect();
   await runScenario({

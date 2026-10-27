@@ -43,6 +43,7 @@ const treasury = new TreasuryService(
 const subject = new TreasuryConsumer(config, treasury, health, pino({ level: 'silent' }));
 const send = (message) => process.send({ ...message, pid: process.pid });
 const processTreasury = treasury.process.bind(treasury);
+
 treasury.process = async (...args) => {
   try {
     return await processTreasury(...args);
@@ -58,20 +59,25 @@ subject.consumer.on(subject.consumer.events.CRASH, () => {
   send({ type: 'consumer-crash' });
 });
 const commit = subject.consumer.commitOffsets.bind(subject.consumer);
+
 subject.consumer.commitOffsets = async (offsets) => {
   if (process.env.AUDIT_CRASH_BEFORE_OFFSET === 'true') {
     send({ type: 'before-offset', offsets });
     // Deliberately hold the real post-DB/pre-broker window until the parent kills this process.
     await new Promise(() => {});
   }
+
   await commit(offsets);
   send({ type: 'offset-committed', offsets });
 };
 let stopping = false;
+
 async function stop() {
   if (stopping) return;
+
   stopping = true;
   const deadline = setTimeout(() => process.exit(2), 35000);
+
   try {
     await subject.stop();
     await db.$disconnect();

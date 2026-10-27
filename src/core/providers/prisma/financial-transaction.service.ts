@@ -26,6 +26,7 @@ export class FinancialTransactionService {
         const context = databaseErrorContext(error);
         const retryable =
           context.prismaCode === 'P2034' || ['40P01', '40001'].includes(context.sqlState ?? '');
+
         if (!retryable || attempt >= 2) throw error;
       }
     }

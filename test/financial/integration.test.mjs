@@ -84,6 +84,7 @@ async function makeApplication(settings, client, health) {
     .useValue(health)
     .compile();
   const app = configureApplication(module.createNestApplication({ logger: false }));
+
   await app.init();
 
   return app;
@@ -102,18 +103,24 @@ let brokers;
 let producer;
 let admin;
 let scratch;
+
 async function poll(read, accept, timeout = 20000) {
   const end = Date.now() + timeout;
+
   while (Date.now() < end) {
     const value = await read();
+
     if (accept(value)) return value;
+
     await setTimeout(30);
   }
+
   throw new Error('Bounded polling timed out');
 }
 async function fixture(limit = 10000n) {
   const id = randomUUID(),
     tenantId = `tenant-${randomUUID()}`;
+
   await db.program.create({
     data: { id, tenantId, currency: 'USD', limitMinor: limit, syncStatus: 'READY' },
   });
@@ -123,6 +130,7 @@ async function fixture(limit = 10000n) {
     permissions: ['capacity:read', 'reservations:write', 'treasury:reconcile'],
   };
   const health = new ConsumerHealth();
+
   health.connected = true;
 
   return {
@@ -139,6 +147,7 @@ const input = (amount = '70.00', currency = 'USD', invoiceId = randomUUID()) => 
   invoiceId,
 });
 const key = () => randomUUID();
+
 function rendezvous(parties) {
   let arrived = 0;
   let release;
@@ -148,6 +157,7 @@ function rendezvous(parties) {
 
   return async () => {
     if (++arrived === parties) release();
+
     await ready;
   };
 }
@@ -157,11 +167,13 @@ async function assertAggregate(id) {
     where: { programId: id, status: 'ACTIVE' },
     _sum: { reservedMinor: true },
   });
+
   expect(p.reservedMinor).toBe(active._sum.reservedMinor ?? 0n);
   const audit = await db.capacityMovement.aggregate({
     where: { programId: id },
     _sum: { reservedDelta: true },
   });
+
   expect(p.reservedMinor).toBe(audit._sum.reservedDelta ?? 0n);
 }
 function event(f, revision, type, payload) {
@@ -247,6 +259,7 @@ beforeAll(async () => {
     logLevel: logLevel.NOTHING,
     retry: { retries: 20, initialRetryTime: 100 },
   });
+
   admin = kafka.admin();
   await admin.connect();
   producer = kafka.producer();
@@ -266,6 +279,7 @@ describe('PostgreSQL financial concurrency', () => {
     const f = await fixture();
     const r = await f.service.reserve(f.principal, f.id, input('1'), key(), key());
     const count = await db.idempotencyRequest.count({ where: { tenantId: f.principal.tenantId } });
+
     f.health.stopping = true;
     await expect(
       f.service.reserve(f.principal, f.id, input('1'), key(), key()),
@@ -285,25 +299,31 @@ describe('PostgreSQL financial concurrency', () => {
     const f = await fixture();
     const other = makeCapacity(secondDb, f.health);
     const meet = rendezvous(2);
+
     for (const service of [f.service, other]) {
       const lock = service.repository.lock.bind(service.repository);
+
       service.repository.lock = async (...args) => {
         await meet();
 
         return lock(...args);
       };
     }
+
     const keys = [key(), key()];
     const commands = [input(), input()];
     const results = await Promise.all([
       f.service.reserve(f.principal, f.id, commands[0], keys[0], key()),
       other.reserve(f.principal, f.id, commands[1], keys[1], key()),
     ]);
+
     expect(results.map((r) => r.status).sort()).toEqual([201, 409]);
     expect(await db.capacityMovement.count({ where: { programId: f.id } })).toBe(1);
     const winner = results.find((r) => r.status === 201);
+
     await f.service.release(f.principal, f.id, winner.body.id, key(), key());
     const loser = results.findIndex((r) => r.status === 409);
+
     expect(await f.service.reserve(f.principal, f.id, commands[loser], keys[loser], key())).toEqual(
       results[loser],
     );
@@ -316,7 +336,9 @@ describe('PostgreSQL financial concurrency', () => {
     const results = await Promise.all(
       Array.from({ length: 5 }, () => f.service.reserve(f.principal, f.id, i, k, key())),
     );
+
     for (const result of results) expect(result).toEqual(results[0]);
+
     expect(await f.service.reserve(f.principal, f.id, { ...i, amount: '10.00' }, k, key())).toEqual(
       results[0],
     );
@@ -324,6 +346,7 @@ describe('PostgreSQL financial concurrency', () => {
       f.service.reserve(f.principal, f.id, { ...i, amount: '11' }, k, key()),
     ).rejects.toMatchObject({ code: 'IDEMPOTENCY_KEY_REUSED' });
     const pid = randomUUID();
+
     await db.program.create({
       data: {
         id: pid,
@@ -337,6 +360,7 @@ describe('PostgreSQL financial concurrency', () => {
       'DUPLICATE_INVOICE',
     );
     const rid = results[0].body.id;
+
     await Promise.all([
       f.service.release(f.principal, f.id, rid, key(), key()),
       f.service.release(f.principal, f.id, rid, key(), key()),
@@ -352,6 +376,7 @@ describe('PostgreSQL financial concurrency', () => {
   test('concurrent cross-program invoices with different keys produce exactly one reservation', async () => {
     const f = await fixture();
     const pid = randomUUID();
+
     await db.program.create({
       data: {
         id: pid,
@@ -366,6 +391,7 @@ describe('PostgreSQL financial concurrency', () => {
       f.service.reserve(f.principal, f.id, i, key(), key()),
       makeCapacity(secondDb, f.health).reserve(f.principal, pid, i, key(), key()),
     ]);
+
     expect(results.map((r) => r.status).sort()).toEqual([201, 409]);
     expect(
       await db.reservation.count({
@@ -380,6 +406,7 @@ describe('PostgreSQL financial concurrency', () => {
     const k = key(),
       i = input('10');
     const original = f.service.repository.movement.bind(f.service.repository);
+
     f.service.repository.movement = async () => {
       throw new Error('Injected failure after financial writes');
     };
@@ -392,12 +419,14 @@ describe('PostgreSQL financial concurrency', () => {
     await assertAggregate(f.id);
     f.service.repository.movement = original;
     const committed = await f.service.reserve(f.principal, f.id, i, k, key());
+
     expect(await f.service.reserve(f.principal, f.id, i, k, key())).toEqual(committed);
   });
   test('FX is fixed; release and replay survive provider failure, including scale 0 and 3', async () => {
     const f = await fixture();
     const fx = new FxRateProvider();
     const service = makeCapacity(db, f.health, fx);
+
     for (const [amount, currency, expected] of [
       ['100', 'JPY', '0.67'],
       ['1.001', 'KWD', '3.26'],
@@ -406,8 +435,10 @@ describe('PostgreSQL financial concurrency', () => {
       const i = input(amount, currency),
         k = key();
       const reserved = await service.reserve(f.principal, f.id, i, k, key());
+
       expect(reserved.body.reservedAmount).toBe(expected);
       const spy = jest.spyOn(fx, 'quote').mockRejectedValue(new Error('FX down'));
+
       expect(await service.reserve(f.principal, f.id, i, k, key())).toEqual(reserved);
       expect(
         (await service.release(f.principal, f.id, reserved.body.id, key(), key())).body
@@ -416,6 +447,7 @@ describe('PostgreSQL financial concurrency', () => {
       expect(spy).not.toHaveBeenCalled();
       spy.mockRestore();
     }
+
     await assertAggregate(f.id);
   });
   test('identity FX does not call the provider; expired external FX leaves no idempotency record', async () => {
@@ -423,10 +455,12 @@ describe('PostgreSQL financial concurrency', () => {
     const fx = new FxRateProvider();
     const service = makeCapacity(db, f.health, fx);
     const spy = jest.spyOn(fx, 'quote').mockRejectedValue(new Error('Provider unavailable'));
+
     expect((await service.reserve(f.principal, f.id, input('1'), key(), key())).status).toBe(201);
     expect(spy).not.toHaveBeenCalled();
     spy.mockRestore();
     const k = key();
+
     jest.spyOn(fx, 'quote').mockResolvedValue({
       rate: '1.1',
       source: 'fixture',
@@ -444,6 +478,7 @@ describe('PostgreSQL financial concurrency', () => {
   test('lower treasury limit exposes overLimit; release works while reconciliation or consumer is unavailable', async () => {
     const f = await fixture();
     const r = await f.service.reserve(f.principal, f.id, input(), key(), key());
+
     expect(
       (await apply(f, event(f, '1', 'ProgramLimitUpdated', { currency: 'USD', limit: '50' }))).code,
     ).toBe('APPLIED');
@@ -463,6 +498,7 @@ describe('PostgreSQL financial concurrency', () => {
   test('reserve/release and reserve/snapshot races preserve aggregates', async () => {
     const f = await fixture();
     const r = await f.service.reserve(f.principal, f.id, input('20'), key(), key());
+
     await Promise.all([
       f.service.release(f.principal, f.id, r.body.id, key(), key()),
       f.service.reserve(f.principal, f.id, input('30'), key(), key()),
@@ -472,6 +508,7 @@ describe('PostgreSQL financial concurrency', () => {
       f.service.reserve(f.principal, f.id, input('1'), key(), key()),
       apply(f, snap),
     ]);
+
     expect(['APPLIED', 'STATE_VERSION_CONFLICT']).toContain(results[1].code);
     await assertAggregate(f.id);
   });
@@ -484,6 +521,7 @@ describe('treasury reconciliation and deduplication', () => {
       const r = await f.service.reserve(f.principal, f.id, input('1'), key(), key());
       const original = await db.reservation.findUniqueOrThrow({ where: { id: r.body.id } });
       const e = await snapshot(f);
+
       e.payload.reservations = e.payload.reservations.map((row) => ({
         ...row,
         id: row.id.toUpperCase(),
@@ -491,12 +529,14 @@ describe('treasury reconciliation and deduplication', () => {
       }));
       expect((await apply(f, e)).code).toBe('APPLIED');
       const applied = await db.program.findUniqueOrThrow({ where: { id: f.id } });
+
       expect(applied).toMatchObject({
         syncStatus: 'READY', reservedMinor: 100n, stateVersion: 2n, lastAppliedTreasuryRevision: 1n,
       });
       const inbox = await db.treasuryInbox.findUniqueOrThrow({
         where: { source_eventId: { source: 'test-treasury', eventId: e.eventId } },
       });
+
       expect(inbox.payload).toEqual(e);
       expect(inbox.fingerprint).toBe(fingerprint(e));
       expect(inbox.revisionFingerprint).toBe(fingerprint({
@@ -518,9 +558,11 @@ describe('treasury reconciliation and deduplication', () => {
   );
   test('snapshot restores uppercase UUIDs and keeps case-distinct invoice IDs separate', async () => {
     const f = await fixture();
+
     await f.service.reserve(f.principal, f.id, input('1', 'USD', 'Invoice-Case'), key(), key());
     const e = await snapshot(f);
     const id = key().toUpperCase();
+
     e.payload.reservations.push({
       ...e.payload.reservations[0], id, programId: f.id.toUpperCase(), invoiceId: 'INVOICE-CASE',
     });
@@ -539,6 +581,7 @@ describe('treasury reconciliation and deduplication', () => {
     const r = await f.service.reserve(f.principal, f.id, input('1'), key(), key());
     const original = await db.reservation.findUniqueOrThrow({ where: { id: r.body.id } });
     const e = await snapshot(f);
+
     e.payload.reservations.push({ ...e.payload.reservations[0], id: r.body.id.toUpperCase(), invoiceId: key() });
     expect((await apply(f, e)).code).toBe('DUPLICATE_SNAPSHOT_ROW');
     expect(await db.program.findUniqueOrThrow({ where: { id: f.id } })).toMatchObject({
@@ -556,6 +599,7 @@ describe('treasury reconciliation and deduplication', () => {
     const r = await f.service.reserve(f.principal, f.id, input('1'), key(), key());
     const original = await db.reservation.findUniqueOrThrow({ where: { id: r.body.id } });
     const e = await snapshot(f);
+
     e.payload.reservations[0].programId = uppercaseProgram ? foreign.id.toUpperCase() : foreign.id;
     expect((await apply(f, e)).code).toBe('CURRENCY_OR_PROGRAM_CONFLICT');
     expect(await db.program.findUniqueOrThrow({ where: { id: f.id } })).toMatchObject({
@@ -571,6 +615,7 @@ describe('treasury reconciliation and deduplication', () => {
     const r = await f.service.reserve(f.principal, f.id, input('1', 'USD', 'Invoice-Case'), key(), key());
     const original = await db.reservation.findUniqueOrThrow({ where: { id: r.body.id } });
     const e = await snapshot(f);
+
     e.payload.reservations[0].invoiceId = 'INVOICE-CASE';
     expect((await apply(f, e)).code).toBe('RESERVATION_CONFLICT');
     expect(await db.program.findUniqueOrThrow({ where: { id: f.id } })).toMatchObject({
@@ -586,6 +631,7 @@ describe('treasury reconciliation and deduplication', () => {
     const original = await db.reservation.findUniqueOrThrow({ where: { id: r.body.id } });
     const program = await db.program.findUniqueOrThrow({ where: { id: f.id } });
     const e = await snapshot(f);
+
     e.tenantId = e.tenantId.toUpperCase();
     expect((await apply(f, e)).code).toBe('UNKNOWN_PROGRAM');
     expect(await db.program.findUniqueOrThrow({ where: { id: f.id } })).toEqual(program);
@@ -596,6 +642,7 @@ describe('treasury reconciliation and deduplication', () => {
   test('event replay, conflicting event ID and malformed quarantine have no repeated financial effect', async () => {
     const f = await fixture();
     const e = event(f, '1', 'ProgramLimitUpdated', { currency: 'USD', limit: '150' });
+
     expect((await apply(f, e)).code).toBe('APPLIED');
     expect((await apply(f, e)).code).toBe('APPLIED');
     expect(await db.capacityMovement.count({ where: { programId: f.id } })).toBe(1);
@@ -610,6 +657,7 @@ describe('treasury reconciliation and deduplication', () => {
       (await db.program.findUniqueOrThrow({ where: { id: f.id } })).highestSeenTreasuryRevision,
     ).toBe(9n);
     const coords = { topic: 'bad', partition: 0, offset: '0' };
+
     await f.treasury.process(Buffer.from('{bad'), null, coords);
     await f.treasury.process(Buffer.from('{bad'), null, coords);
     expect(await db.treasuryQuarantine.count({ where: { topic: 'bad', offset: '0' } })).toBe(1);
@@ -617,6 +665,7 @@ describe('treasury reconciliation and deduplication', () => {
   });
   test('gap/out-of-order revisions stay blocked; recovery must exceed highestSeen; revision conflict quarantines', async () => {
     const f = await fixture();
+
     expect(
       (await apply(f, event(f, '3', 'ProgramLimitUpdated', { currency: 'USD', limit: '300' })))
         .code,
@@ -647,10 +696,13 @@ describe('treasury reconciliation and deduplication', () => {
       const f = await fixture();
       const r = await f.service.reserve(f.principal, f.id, input('10'), key(), key());
       const stale = await snapshot(f);
+
       if (action === 'reserve')
         await f.service.reserve(f.principal, f.id, input('5'), key(), key());
       else await f.service.release(f.principal, f.id, r.body.id, key(), key());
+
       const before = await db.program.findUniqueOrThrow({ where: { id: f.id } });
+
       expect((await apply(f, stale)).code).toBe('STATE_VERSION_CONFLICT');
       expect((await db.program.findUniqueOrThrow({ where: { id: f.id } })).reservedMinor).toBe(
         before.reservedMinor,
@@ -667,30 +719,42 @@ describe('treasury reconciliation and deduplication', () => {
     const f = await fixture();
     const r = await f.service.reserve(f.principal, f.id, input('10', 'EUR'), key(), key());
     const original = await snapshot(f);
+
     if (original.type !== 'ProgramStateSnapshot') throw new Error();
+
     const corrupted = structuredClone(original);
+
     corrupted.payload.reservations[0].fx.rate = '2';
     const freshRow = { ...original.payload.reservations[0], id: key(), invoiceId: key() };
+
     corrupted.payload.reservations.unshift(freshRow);
     expect((await apply(f, corrupted)).code).toBe('INVALID_FX_AMOUNT');
     expect(await db.reservation.count({ where: { programId: f.id } })).toBe(1);
     const immutable = await snapshot(f);
+
     if (immutable.type !== 'ProgramStateSnapshot') throw new Error();
+
     immutable.payload.reservations[0].fx.source = 'different-source';
     expect((await apply(f, immutable)).code).toBe('RESERVATION_CONFLICT');
     const good = await snapshot(f);
+
     if (good.type !== 'ProgramStateSnapshot') throw new Error();
+
     good.payload.reservations.push(freshRow);
     expect((await apply(f, good)).code).toBe('APPLIED');
     const empty = await snapshot(f);
+
     if (empty.type !== 'ProgramStateSnapshot') throw new Error();
+
     empty.payload.reservations = [];
     expect((await apply(f, empty)).code).toBe('APPLIED');
     expect((await f.service.release(f.principal, f.id, r.body.id, key(), key())).body.status).toBe(
       'RECONCILED_CLOSED',
     );
     const revive = await snapshot(f);
+
     if (revive.type !== 'ProgramStateSnapshot') throw new Error();
+
     revive.payload.reservations = [original.payload.reservations[0]];
     expect((await apply(f, revive)).code).toBe('RESERVATION_CONFLICT');
     await assertAggregate(f.id);
@@ -698,8 +762,11 @@ describe('treasury reconciliation and deduplication', () => {
   test('full bounded snapshot fits the transaction; active-count and byte ceilings are enforced', async () => {
     const f = await fixture();
     const e = await snapshot(f);
+
     if (e.type !== 'ProgramStateSnapshot') throw new Error();
+
     const timestamp = new Date().toISOString();
+
     e.payload.reservations = Array.from({ length: 1000 }, () => ({
       id: key(),
       programId: f.id,
@@ -720,6 +787,7 @@ describe('treasury reconciliation and deduplication', () => {
     );
     const oversized = await snapshot(f);
     const raw = Buffer.from(JSON.stringify(oversized) + ' '.repeat(MAX_EVENT_BYTES));
+
     expect(
       (
         await f.treasury.process(raw, `${f.principal.tenantId}:${f.id}`, {
@@ -730,6 +798,7 @@ describe('treasury reconciliation and deduplication', () => {
       ).code,
     ).toBe('INVALID_EVENT');
     const p = await db.program.findUniqueOrThrow({ where: { id: f.id } });
+
     expect(p.highestSeenTreasuryRevision).toBe(2n);
     expect(p.reservedMinor).toBe(1000n);
     await assertAggregate(f.id);
@@ -740,19 +809,24 @@ describe('treasury reconciliation and deduplication', () => {
       Array.from({ length: 12 }, () =>
         f.service.reserve(f.principal, f.id, input('1'), key(), key())),
     );
+
     for (let i = 0; i < 12; i++) {
       const v = await f.service.view(f.principal, f.id);
+
       expect(BigInt(v.stateVersion)).toBe(BigInt(v.reservations.length));
     }
+
     await writes;
     await assertAggregate(f.id);
   });
   test('DB rejects monetary, tenant and history violations', async () => {
     const f = await fixture();
+
     await expect(
       db.program.update({ where: { id: f.id }, data: { reservedMinor: -1n } }),
     ).rejects.toThrow();
     const r = await f.service.reserve(f.principal, f.id, input('1'), key(), key());
+
     await expect(
       db.reservation.update({ where: { id: r.body.id }, data: { tenantId: 'foreign' } }),
     ).rejects.toThrow();
@@ -772,6 +846,7 @@ describe('HTTP authentication, CASL, serialization and replay', () => {
     const app = await makeApplication(settings, db, f.health),
       server = app.getHttpServer(),
       path = '/api/v1/programs/' + f.id;
+
     async function jwt({
       tenantId = f.principal.tenantId,
       clientId = key(),
@@ -793,6 +868,7 @@ describe('HTTP authentication, CASL, serialization and replay', () => {
         },
       });
       const sid = key();
+
       if (store)
         await db.session.create({
           data: {
@@ -802,6 +878,7 @@ describe('HTTP authentication, CASL, serialization and replay', () => {
             expiresAt: new Date(Date.now() + 60000),
           },
         });
+
       const token = await new SignJWT({ sid, type })
         .setProtectedHeader({ alg: 'HS256' })
         .setSubject(String(user.id))
@@ -824,6 +901,7 @@ describe('HTTP authentication, CASL, serialization and replay', () => {
         '/docs-json',
       ])
         expect((await request(server).get(route)).status).toBe(401);
+
       expect(
         (
           await request(server)
@@ -846,6 +924,7 @@ describe('HTTP authentication, CASL, serialization and replay', () => {
         await jwt({ type: 'refresh' }),
         await jwt({ store: false }),
       ];
+
       for (const bad of invalid)
         expect(
           (
@@ -854,6 +933,7 @@ describe('HTTP authentication, CASL, serialization and replay', () => {
               .auth(bad.token, { type: 'bearer' })
           ).status,
         ).toBe(401);
+
       expect(
         (
           await request(server)
@@ -869,6 +949,7 @@ describe('HTTP authentication, CASL, serialization and replay', () => {
         .setAudience('capacity-service')
         .setExpirationTime('5m')
         .sign(pair.privateKey);
+
       expect(
         (
           await request(server)
@@ -879,6 +960,7 @@ describe('HTTP authentication, CASL, serialization and replay', () => {
       const foreign = await jwt({ tenantId: 'foreign' }),
         denied = await jwt({ roles: [] }),
         readonly = await jwt({ roles: ['READ_ONLY'] });
+
       expect(
         (
           await request(server)
@@ -915,6 +997,7 @@ describe('HTTP authentication, CASL, serialization and replay', () => {
         legacyKey,
         key(),
       );
+
       await legacy.service.release(legacy.principal, legacy.id, legacyResult.body.id, key(), key());
       const legacyToken = await jwt({
         tenantId: legacy.principal.tenantId,
@@ -927,6 +1010,7 @@ describe('HTTP authentication, CASL, serialization and replay', () => {
         .auth(legacyToken.token, { type: 'bearer' })
         .set('Idempotency-Key', legacyKey)
         .send(legacyInput);
+
       expect(legacyReplay.status).toBe(201);
       expect(legacyReplay.body.data).toEqual(legacyResult.body);
       expect((await db.program.findUniqueOrThrow({ where: { id: legacy.id } })).stateVersion).toBe(
@@ -948,6 +1032,7 @@ describe('HTTP authentication, CASL, serialization and replay', () => {
         .post(path + '/reservations')
         .auth(good.token, { type: 'bearer' })
         .send(i);
+
       expect(missingKey.status).toBe(422);
       expect(missingKey.body.error.code).toBe(422000);
       const invalidDto = await request(server)
@@ -955,6 +1040,7 @@ describe('HTTP authentication, CASL, serialization and replay', () => {
         .auth(good.token, { type: 'bearer' })
         .set('Idempotency-Key', key())
         .send({ ...i, tenantId: 'forged' });
+
       expect(invalidDto.status).toBe(422);
       expect(invalidDto.body.error.details.tenantId).toBeDefined();
       for (const badAmount of [
@@ -967,14 +1053,17 @@ describe('HTTP authentication, CASL, serialization and replay', () => {
           .auth(good.token, { type: 'bearer' })
           .set('Idempotency-Key', key())
           .send(badAmount);
+
         expect(invalidAmount.status).toBe(422);
         expect(invalidAmount.body.error.details.amount).toBeDefined();
       }
+
       const first = await request(server)
         .post(path + '/reservations')
         .auth(good.token, { type: 'bearer' })
         .set('Idempotency-Key', k)
         .send(i);
+
       expect(first.status).toBe(201);
       expect(first.body.success).toBe(true);
       expect(first.body.data.tenantId).toBeUndefined();
@@ -983,23 +1072,27 @@ describe('HTTP authentication, CASL, serialization and replay', () => {
         .auth(good.token, { type: 'bearer' })
         .set('Idempotency-Key', k)
         .send(i);
+
       expect(replay.body).toEqual(first.body);
       const duplicate = await request(server)
         .post(path + '/reservations')
         .auth(good.token, { type: 'bearer' })
         .set('Idempotency-Key', k)
         .send({ ...i, amount: '1' });
+
       expect(duplicate.status).toBe(409);
       expect(duplicate.body.error.code).toBe(409102);
       const capacity = await request(server)
         .get(path + '/capacity')
         .auth(good.token, { type: 'bearer' });
+
       expect(capacity.body.data).toMatchObject({
         available: '0.00',
         acceptingReservations: false,
         stateVersion: '1',
       });
       const rid = first.body.data.id;
+
       expect(
         (
           await request(server)
@@ -1051,6 +1144,7 @@ describe('real Kafka delivery and offset ordering', () => {
     const f = await fixture();
     const topic = `treasury-${key()}`,
       group = `group-${key()}`;
+
     await admin.createTopics({ topics: [{ topic, numPartitions: 1, replicationFactor: 1 }] });
     const settings = testSettings({
       DATABASE_URL: url,
@@ -1069,12 +1163,14 @@ describe('real Kafka delivery and offset ordering', () => {
         throw new Error('Lost offset commit');
       })
       .mockImplementation(original);
+
     await current.start();
     await poll(
       async () => f.health.connected,
       (v) => v,
     );
     const e = await snapshot(f, '1');
+
     await producer.send({
       topic,
       messages: [{ key: `${e.tenantId}:${e.programId}`, value: JSON.stringify(e) }],
@@ -1089,6 +1185,7 @@ describe('real Kafka delivery and offset ordering', () => {
     );
     await current.stop();
     const offsets = await admin.fetchOffsets({ groupId: group, topics: [topic] });
+
     expect(BigInt(offsets[0].partitions[0].offset)).toBeLessThanOrEqual(0n);
     current = new TreasuryConsumer(settings, f.treasury, f.health, logger);
     await current.start();
@@ -1102,6 +1199,7 @@ describe('real Kafka delivery and offset ordering', () => {
         'RECONCILIATION_REQUIRED',
       );
       const recovery = await snapshot(f, '2');
+
       await producer.send({
         topic,
         messages: [
@@ -1126,6 +1224,7 @@ describe('real Kafka delivery and offset ordering', () => {
     const f = await fixture();
     const topic = `treasury-${key()}`,
       group = `group-${key()}`;
+
     await admin.createTopics({ topics: [{ topic, numPartitions: 1, replicationFactor: 1 }] });
     const settings = testSettings({
       DATABASE_URL: url,
@@ -1142,6 +1241,7 @@ describe('real Kafka delivery and offset ordering', () => {
       pino({ level: 'silent' }),
     );
     const failure = jest.spyOn(f.treasury, 'process');
+
     await consumer.start();
     await poll(
       async () => f.health.connected,
@@ -1149,6 +1249,7 @@ describe('real Kafka delivery and offset ordering', () => {
     );
     await db.$executeRaw`ALTER TABLE "TreasuryInbox" RENAME TO "TemporarilyUnavailableInbox"`;
     const e = await snapshot(f, '1');
+
     await producer.send({
       topic,
       messages: [
@@ -1165,18 +1266,21 @@ describe('real Kafka delivery and offset ordering', () => {
         (v) => v >= 1,
       );
       const offsets = await admin.fetchOffsets({ groupId: group, topics: [topic] });
+
       expect(BigInt(offsets[0].partitions[0].offset)).toBeLessThanOrEqual(0n);
     } finally {
       await consumer.stop();
       failure.mockRestore();
       await db.$executeRaw`ALTER TABLE "TemporarilyUnavailableInbox" RENAME TO "TreasuryInbox"`;
     }
+
     expect(await db.treasuryInbox.count({ where: { topic } })).toBe(0);
   });
   test('isolated broker outage blocks admission, permits release, and requires a fresh snapshot after reconnect', async () => {
     const f = await fixture();
     const topic = `treasury-${key()}`,
       group = `group-${key()}`;
+
     await admin.createTopics({ topics: [{ topic, numPartitions: 1, replicationFactor: 1 }] });
     const settings = testSettings({
       DATABASE_URL: url,
@@ -1197,6 +1301,7 @@ describe('real Kafka delivery and offset ordering', () => {
         topic,
         messages: [{ key: `${e.tenantId}:${e.programId}`, value: JSON.stringify(e) }],
       });
+
     await consumer.start();
     await poll(
       async () => f.health.connected,
@@ -1212,6 +1317,7 @@ describe('real Kafka delivery and offset ordering', () => {
     // Keep it unavailable until detection rather than sleeping for a guessed time.
     const runtime = await getContainerRuntimeClient();
     const container = runtime.container.getById(broker.getId());
+
     await container.pause();
     try {
       await poll(
@@ -1229,6 +1335,7 @@ describe('real Kafka delivery and offset ordering', () => {
     } finally {
       await container.unpause();
     }
+
     try {
       await poll(
         async () => f.health.connected,

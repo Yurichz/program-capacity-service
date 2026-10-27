@@ -11,6 +11,7 @@ export class ReadinessService {
 
   async check() {
     if (this.consumer.stopping || !this.consumer.connected) throw new ServiceUnavailableException();
+
     try {
       await this.prisma.$tx(
         async (client) => {
@@ -22,6 +23,7 @@ export class ReadinessService {
     } catch {
       throw new ServiceUnavailableException();
     }
+
     if (this.consumer.stopping || !this.consumer.connected) throw new ServiceUnavailableException();
 
     return { status: 'ready' };

@@ -27,11 +27,15 @@ export function prisma(args, env) {
 
 export async function waitFor(read, accept, description, timeout = 30000) {
   const deadline = Date.now() + timeout;
+
   while (Date.now() < deadline) {
     const value = await read();
+
     if (accept(value)) return value;
+
     await setTimeout(50);
   }
+
   throw new Error('Timed out waiting for ' + description);
 }
 
@@ -59,7 +63,9 @@ export async function stopOwned(containers, network) {
   const results = await Promise.allSettled(
     [...containers].reverse().map((container) => container.stop()),
   );
+
   if (network) results.push(...(await Promise.allSettled([network.stop()])));
+
   for (const result of results)
     if (result.status === 'rejected') {
       console.error('Owned test resource cleanup failed:', result.reason?.message);
