@@ -1,0 +1,277 @@
+name: CI
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      ref: { type: string, default: '' }
+      export_image: { type: boolean, default: false }
+    outputs:
+      image_artifact:
+        value: ${{ jobs.containers.outputs.image_artifact }}
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  quality:
+    name: Quality
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    concurrency:
+      group: quality-${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            web/package-lock.json
+      - run: npm ci
+      - run: npm ci --prefix web
+      - run: npx --no-install prisma validate
+      - run: npm run db:generate
+      - run: npm run format:check
+      - run: npm run lint
+      - run: npm --prefix web run lint
+      - run: npm run typecheck
+      - run: npm --prefix web run typecheck
+      - run: npm run check:architecture
+      - name: Validate workflow syntax and shell scripts
+        run: docker run --rm -v "$PWD:/repo:ro" -w /repo rhysd/actionlint:1.7.12@sha256:b1934ee5f1c509618f2508e6eb47ee0d3520686341fec936f3b79331f9315667 .github/workflows/ci.yml .github/workflows/release.yml
+      - run: npm run test:coverage
+      - run: npm --prefix web test
+      - run: npm run build
+      - run: npm --prefix web run build
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: unit-coverage
+          path: coverage/unit
+          if-no-files-found: error
+          retention-days: 14
+
+  integration:
+    name: PostgreSQL and Kafka integration
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    concurrency:
+      group: integration-${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with: { node-version-file: .node-version, cache: npm }
+      - run: npm ci
+      - run: npm run test:core
+      - run: npm run test:integration -- --coverage --coverageDirectory=coverage/integration
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: integration-coverage
+          path: coverage/integration
+          if-no-files-found: error
+          retention-days: 14
+
+  migrations:
+    name: Migration validation
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    concurrency:
+      group: migrations-${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with: { node-version-file: .node-version, cache: npm }
+      - run: npm ci
+      - run: npm run test:migrations
+
+  containers:
+    name: Production images and browser tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    outputs:
+      image_artifact: ${{ steps.export.outputs.name }}
+    concurrency:
+      group: containers-${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+          persist-credentials: false
+      - id: revision
+        run: echo "sha=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            web/package-lock.json
+      - run: npm ci
+      - run: npm ci --prefix web
+      - run: npx --prefix web --no-install playwright install --with-deps chromium
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          target: runtime
+          load: true
+          tags: program-capacity-service:verify
+          build-args: |
+            REVISION=${{ steps.revision.outputs.sha }}
+            SOURCE_URL=${{ github.server_url }}/${{ github.repository }}
+          cache-from: type=gha,scope=api
+          cache-to: type=gha,mode=max,scope=api
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: .
+          target: tools
+          load: true
+          tags: program-capacity-tools:verify
+          cache-from: type=gha,scope=tools
+          cache-to: type=gha,mode=max,scope=tools
+      - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+        with:
+          context: web
+          load: true
+          tags: program-capacity-web:verify
+          cache-from: type=gha,scope=web
+          cache-to: type=gha,mode=max,scope=web
+      - run: npm run test:smoke
+        env:
+          APP_IMAGE: program-capacity-service:verify
+          TOOLS_IMAGE: program-capacity-tools:verify
+      - name: Require missing test infrastructure to fail
+        run: |
+          mkdir -p .ci-artifacts
+          if docker run --rm -e DOCKER_HOST=tcp://127.0.0.1:1 program-capacity-tools:verify node scripts/test-migrations.mjs > .ci-artifacts/missing-infrastructure.log 2>&1; then
+            echo 'A test harness without Docker incorrectly succeeded'
+            exit 1
+          fi
+          grep -Eq 'Could not find a working container runtime|ECONNREFUSED' .ci-artifacts/missing-infrastructure.log
+      - run: npm run web:test
+        env:
+          APP_IMAGE: program-capacity-service:verify
+          TOOLS_IMAGE: program-capacity-tools:verify
+          WEB_IMAGE: program-capacity-web:verify
+      - name: Scan runtime images and generate SBOM
+        run: |
+          mkdir -p .ci-artifacts
+          scanner='aquasec/trivy:0.76.1@sha256:790fd66d1697395d8693d1acaa1ea702406a20f109b6fc7bac8db623eca6c06c'
+          for image in service web; do
+            docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD/.ci-artifacts:/reports" -v "$PWD/.trivyignore.yaml:/policy/ignore.yaml:ro" -v trivy-cache:/root/.cache "$scanner" image --scanners vuln --severity HIGH,CRITICAL --exit-code 1 --ignorefile /policy/ignore.yaml --show-suppressed --format json --output "/reports/$image-vulnerabilities.json" "program-capacity-$image:verify"
+          done
+          docker run --rm -v /var/run/docker.sock:/var/run/docker.sock -v "$PWD/.ci-artifacts:/reports" -v trivy-cache:/root/.cache "$scanner" image --format cyclonedx --output /reports/api-sbom.cdx.json program-capacity-service:verify
+      - id: export
+        if: ${{ inputs.export_image }}
+        name: Export the verified image without rebuilding
+        run: |
+          docker save --output .ci-artifacts/api.tar program-capacity-service:verify
+          docker image inspect program-capacity-service:verify --format '{{json .}}' > .ci-artifacts/image.json
+          (cd .ci-artifacts && sha256sum api.tar > api.tar.sha256)
+          echo "name=verified-api-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}" >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: ${{ inputs.export_image && success() }}
+        with:
+          name: ${{ steps.export.outputs.name }}
+          path: .ci-artifacts
+          include-hidden-files: true
+          if-no-files-found: error
+          retention-days: 3
+          compression-level: 0
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: container-reports
+          include-hidden-files: true
+          path: |
+            .ci-artifacts/*.json
+            .ci-artifacts/*.log
+            web/test-results
+            web/playwright-report
+          if-no-files-found: error
+          retention-days: 14
+
+  secrets:
+    name: Secret scanning
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    concurrency:
+      group: secrets-${{ github.workflow }}-${{ github.ref }}
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Scan all fetched history with redacted findings
+        run: |
+          mkdir -p .ci-artifacts
+          docker run --rm -v "$PWD:/src:ro" -v "$PWD/.ci-artifacts:/reports" -e GIT_CONFIG_COUNT=1 -e GIT_CONFIG_KEY_0=safe.directory -e GIT_CONFIG_VALUE_0=/src ghcr.io/gitleaks/gitleaks:v8.30.1@sha256:c00b6bd0aeb3071cbcb79009cb16a60dd9e0a7c60e2be9ab65d25e6bc8abbb7f git /src --log-opts=--all --redact --report-format json --report-path /reports/secrets.json
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: secret-scan
+          include-hidden-files: true
+          path: .ci-artifacts/secrets.json
+          if-no-files-found: error
+          retention-days: 7
+
+  dependencies:
+    name: Dependency scanning
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+          persist-credentials: false
+      - name: Scan both npm lockfiles
+        run: |
+          mkdir -p .ci-artifacts
+          docker run --rm -v "$PWD:/src:ro" -v "$PWD/.ci-artifacts:/reports" aquasec/trivy:0.76.1@sha256:790fd66d1697395d8693d1acaa1ea702406a20f109b6fc7bac8db623eca6c06c fs --scanners vuln --include-dev-deps --severity HIGH,CRITICAL --exit-code 1 --format json --output /reports/dependencies.json /src
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        if: always()
+        with:
+          name: dependency-scan
+          include-hidden-files: true
+          path: .ci-artifacts/dependencies.json
+          if-no-files-found: error
+          retention-days: 14
+
+  required:
+    name: Required checks
+    if: always()
+    needs: [quality, integration, migrations, containers, secrets, dependencies]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    steps:
+      - name: Require every mandatory job to succeed
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          printf '%s\n' "$RESULTS" | jq -e 'length == 6 and all(.[]; .result == "success")'

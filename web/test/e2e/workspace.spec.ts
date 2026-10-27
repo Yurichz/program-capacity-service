@@ -101,9 +101,13 @@ test('login, real Kafka reconciliation, cross-currency reserve/release and stale
   await page
     .getByLabel('Program', { exact: true })
     .selectOption('22222222-2222-4222-8222-222222222222');
+  await expect(page.getByLabel('Search invoices')).toHaveValue('');
+  await expect(page.getByLabel('Status', { exact: true })).toHaveValue('');
+  await expect(page.getByText('Your first reservation starts here')).toBeVisible();
+  await page.getByLabel('Search invoices').fill(invoice);
+  await expect(page.getByText('No matching reservations', { exact: true })).toBeVisible();
   await expect(page.getByText('Your first reservation starts here')).not.toBeVisible();
   await page.getByLabel('Search invoices').fill('');
-  await page.getByLabel('Status', { exact: true }).selectOption('');
   await expect(page.getByText('Your first reservation starts here')).toBeVisible();
 });
 test('lost HTTP response retries one operation with the same idempotency key; errors retain a usable form', async ({
