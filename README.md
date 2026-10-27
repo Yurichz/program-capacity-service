@@ -4,7 +4,9 @@ NestJS API and React operator workspace for financing-program capacity, invoice 
 
 ## Stack and architecture
 
-Node.js 24.22.1, TypeScript 5.9, NestJS 11, Prisma 7 with the PostgreSQL adapter, PostgreSQL 17, KafkaJS 2.2.4, Kafka 4.1, CASL, Pino, React, Vite, Jest, node:test, Playwright and Testcontainers. Both packages use committed npm lockfiles.
+Node.js 26.12.1, TypeScript 6.0, NestJS 12, Prisma 7 with the PostgreSQL adapter, PostgreSQL 17, KafkaJS 2.2.4, Kafka 4.1, CASL 7, Pino, React, Vite, Jest, node:test, Playwright and Testcontainers. Both packages use committed npm lockfiles.
+
+TypeScript stays on 6.0 because the pinned Swagger and typescript-eslint packages do not support TypeScript 7.
 
 `src/core/routes/{auth,user,capacity,treasury}/layers` follows BL/DA/CL boundaries: controllers call BL services; DA repositories own queries, SQL locks and tenant predicates; CL services coordinate financial transactions. Infrastructure lives in `src/core/providers`. Explicit feature imports and the three app import lists make dependencies visible. `check:architecture` checks placement, registration, layer dependencies and runtime cycles; HTTP tests also exercise DI.
 
@@ -113,7 +115,7 @@ Run it against the local seeded environment without competing operations. It pre
 
 ## Tests and checks
 
-Use Node 24.22.1 and a running Docker Engine. Integration, migration, smoke and browser harnesses own disposable `app_test_*` databases/containers. They never reset a configured development database. Missing Docker/configuration causes failure, not a skipped green suite.
+Use Node 26.12.1 and a running Docker Engine. Integration, migration, smoke and browser harnesses own disposable `app_test_*` databases/containers. They never reset a configured development database. Missing Docker/configuration causes failure, not a skipped green suite.
 
 ```sh
 npm ci
