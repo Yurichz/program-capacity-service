@@ -149,24 +149,39 @@ docker run --rm --user 0 -v /var/run/docker.sock:/var/run/docker.sock -e TESTCON
 
 Root here grants the test harness access to the Docker socket; the actual API remains non-root. On native Linux omit the Docker Desktop host override. The Docker socket is administrative access; expose it only to trusted local test tooling.
 
-## Production image
+## CI/CD and releases
 
-Build the runtime and tools targets from the intended source revision. Run migrations through the tools image as a separate controlled step; the API runtime never seeds or migrates automatically. Supply private runtime configuration, start the API image and check protected readiness before reconciling programs.
+`ci.yml` runs on PRs targeting main, pushes to main, manual execution and reusable workflow calls. Independent jobs check quality, real PostgreSQL/Kafka behavior, migrations, production containers/browser behavior, history secrets and dependencies. `Required checks` rejects any mandatory failure, cancellation or unexpected skip. Old PR quality/integration/container/secret jobs can be cancelled; migrations and releases are not interrupted by this cancellation policy.
 
-Verification and release workflows are added in the next stage. Reviewed, expiring Debian package assessments are documented in [security assessments](docs/security.md).
+Gitleaks scans all fetched history with redaction. Trivy blocks HIGH/CRITICAL findings in both npm lockfiles (including dev dependencies) and API/web runtime images. Reviewed Debian package/version exceptions expire on 2026-11-27; see [security assessments](docs/security.md). No blanket vulnerability exceptions are installed. Any future exception must identify a specific finding/package, explain applicability and have an expiry date. Dependabot groups weekly npm, Actions and Docker updates. Actions/scanner versions are pinned to verified immutable revisions/digests.
+
+`release.yml` runs deliberately from an existing stable vX.Y.Z tag or a manual existing-tag input. Version must match package.json and the exact commit must belong to main. It reruns all mandatory verification for that SHA, smoke-tests/scans the image, exports the same image, verifies its checksum/config/revision identity, and publishes it without rebuilding. GHCR tags are X.Y.Z and sha-COMMIT; existing tags are not overwritten. Digest, SBOM and scan evidence are retained. Only the publish job receives packages:write through GITHUB_TOKEN. Web is verified but not published by this API release workflow.
+
+No deployment target is configured. Before the first release, create/push the repository and main branch, enable Actions/package publishing, protect main with the actual `Required checks` status, restrict version-tag creation and configure GHCR package access/visibility to match repository privacy. No repository settings, commits, tags or remote releases are created by local verification.
+
+After checking out the exact released source, build the tools target for a separately controlled migration step. Production migrations do not run the local seed:
+
+```sh
+docker build --target tools -t capacity-release-tools .
+docker run --rm --env-file .env.production capacity-release-tools npm run db:migrate
+docker run --rm --init --cap-drop=ALL --security-opt=no-new-privileges --stop-timeout 40 --env-file .env.production -p 127.0.0.1:3000:3000 ghcr.io/OWNER/REPOSITORY@sha256:VERIFIED_IMAGE_DIGEST
+```
+
+Replace the registry/digest placeholders and provision `.env.production` outside version control. PostgreSQL and Kafka must be reachable from these containers. Check protected readiness, then complete program reconciliation. Future deployment should consume an already verified digest, serialize environment updates, run migrations separately and verify readiness/smoke. Application rollback requires schema compatibility; database rollback is not automatic. See [operations](docs/operations.md).
 
 ## Requirements traceability
 
-| Requirement                              | Implementation                                                            | Verification                                             |
-| ---------------------------------------- | ------------------------------------------------------------------------- | -------------------------------------------------------- |
-| Auth / tenant isolation                  | PostgreSQL sessions, JWT purpose/issuer/audience, CASL, scoped DA queries | Core HTTP, financial HTTP, dashboard and browser tests   |
-| Capacity concurrency / no double release | Program row lock, atomic aggregate/ledger/reservation writes              | Financial concurrency and shutdown tests                 |
-| Durable idempotency / rollback           | Scoped request claims, normalized fingerprints, one transaction           | Duplicate/race/fault/replay tests and image smoke        |
-| Money / fixed FX                         | bigint minor units, exact decimals, saved FX                              | Money/FX unit, integration and smoke tests               |
-| Kafka replay / commit ordering           | Durable inbox/quarantine before explicit offset commit                    | Real broker redelivery, database/broker failure tests    |
-| Stale snapshot safety / recovery         | Consistent view, state-version comparison, revision protocol              | Snapshot race/conflict/recovery and browser tests        |
-| Migration reliability                    | Forward-only FK correction, deploy/diff and SQL guards                    | Clean/upgrade/repeat migration harness and image startup |
-| Operational readiness                    | Protected readiness, safe structured logs, bounded shutdown               | Core operations tests and SIGTERM/restart smoke          |
+| Requirement                              | Implementation                                                            | Verification                                                     |
+| ---------------------------------------- | ------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| Auth / tenant isolation                  | PostgreSQL sessions, JWT purpose/issuer/audience, CASL, scoped DA queries | Core HTTP, financial HTTP, dashboard and browser tests           |
+| Capacity concurrency / no double release | Program row lock, atomic aggregate/ledger/reservation writes              | Financial concurrency and shutdown tests                         |
+| Durable idempotency / rollback           | Scoped request claims, normalized fingerprints, one transaction           | Duplicate/race/fault/replay tests and image smoke                |
+| Money / fixed FX                         | bigint minor units, exact decimals, saved FX                              | Money/FX unit, integration and smoke tests                       |
+| Kafka replay / commit ordering           | Durable inbox/quarantine before explicit offset commit                    | Real broker redelivery, database/broker failure tests            |
+| Stale snapshot safety / recovery         | Consistent view, state-version comparison, revision protocol              | Snapshot race/conflict/recovery and browser tests                |
+| Migration reliability                    | Forward-only FK correction, deploy/diff and SQL guards                    | Clean/upgrade/repeat migration harness and image startup         |
+| Operational readiness                    | Protected readiness, safe structured logs, bounded shutdown               | Core operations tests and SIGTERM/restart smoke                  |
+| CI / image release                       | Required-check gate, immutable verified-image transfer                    | actionlint, individual local commands; GitHub run still required |
 
 ## Deliberate limits
 
