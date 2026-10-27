@@ -131,7 +131,15 @@ jobs:
             web/package-lock.json
       - run: npm ci
       - run: npm ci --prefix web
-      - run: npx --prefix web --no-install playwright install --with-deps chromium
+      - name: Configure bounded Ubuntu package downloads
+        timeout-minutes: 1
+        run: |
+          printf 'https://archive.ubuntu.com/ubuntu/\tpriority:1\nhttps://security.ubuntu.com/ubuntu/\tpriority:2\n' | sudo tee /etc/apt/apt-mirrors.txt
+          printf '%s\n' 'Acquire::Retries "1";' 'Acquire::http::Timeout "15";' 'Acquire::https::Timeout "15";' | sudo tee /etc/apt/apt.conf.d/zzzz-playwright-network
+          apt-config dump Acquire::Retries Acquire::http::Timeout Acquire::https::Timeout
+      - name: Install Chromium headless shell and system dependencies
+        timeout-minutes: 5
+        run: npx --prefix web --no-install playwright install --with-deps --only-shell chromium
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
       - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:

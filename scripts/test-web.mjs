@@ -195,7 +195,7 @@ try {
     E2E_FOREIGN_PASSWORD: foreignPassword,
   };
   console.log(
-    'Browser tests use isolated app_test_web PostgreSQL, Kafka and Node 24 application containers.',
+    'Browser tests use isolated app_test_web PostgreSQL, Kafka and Node 26 application containers.',
   );
   const result = await new Promise((resolve, reject) => {
     const child = spawn(process.execPath, ['node_modules/@playwright/test/cli.js', 'test'], {

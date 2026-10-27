@@ -6,7 +6,7 @@ Reviewed 2026-10-27; all exceptions expire **2026-11-27**. The HIGH/CRITICAL gat
 
 Both runtime images remove bundled npm/yarn (including their vulnerable transitive tooling packages); neither server needs a package manager. API dependencies omit development and optional peer packages, including the Prisma CLI and TypeScript. The API still contains its compiled generated client and production adapter/runtime dependencies.
 
-Both images remove unused mount/umount/nsenter/blkid/findfs/lsblk/infocmp/GNU-gzip command entry points and strip SUID/SGID bits. The unchanged Node 24 Debian runtime does not dynamically link libacl, libblkid, libmount or libtinfo. Compose drops capabilities and sets no-new-privileges for API/web. Production launch instructions use the same restrictions. No external disk probing, mounting, terminal-database parsing, Perl archive handling or privileged ACL workflow is part of these servers.
+Both images remove unused mount/umount/nsenter/blkid/findfs/lsblk/infocmp/GNU-gzip command entry points and strip SUID/SGID bits. The Node 26 Debian runtime does not dynamically link libacl, libblkid, libmount or libtinfo. Compose drops capabilities and sets no-new-privileges for API/web. Production launch instructions use the same restrictions. No external disk probing, mounting, terminal-database parsing, Perl archive handling or privileged ACL workflow is part of these servers.
 
 The API smoke test asserts absent tooling, expected dynamic links, no SUID/SGID files, non-root execution and working HTTP/database/Kafka behavior. Browser tests exercise the final web image. These checks bound the assessment; this is not a claim that all installed Debian source packages have upstream fixes.
 
