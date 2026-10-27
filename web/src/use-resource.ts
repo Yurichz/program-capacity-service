@@ -14,12 +14,15 @@ export function useResource<T>(
   const lastRevision = useRef(revision);
   const reload = useCallback(async () => {
     if (!path || control.current) return;
+
     const controller = new AbortController();
+
     control.current = controller;
     try {
       const value = await (read
         ? read(path, controller.signal)
         : api<T>(path, { signal: controller.signal }));
+
       if (!controller.signal.aborted) {
         setResult(value);
         setError(null);
@@ -28,9 +31,11 @@ export function useResource<T>(
       if (!controller.signal.aborted) setError(failure);
     } finally {
       if (control.current === controller) control.current = null;
+
       if (!controller.signal.aborted) setLoading(false);
     }
   }, [path, read]);
+
   useEffect(() => {
     setResult(null);
     setError(null);
@@ -42,6 +47,7 @@ export function useResource<T>(
     const focus = () => {
       if (!document.hidden) void reload();
     };
+
     window.addEventListener('focus', focus);
     document.addEventListener('visibilitychange', focus);
 

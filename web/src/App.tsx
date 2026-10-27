@@ -16,8 +16,10 @@ import type { Program, Reservation, Result, User, View } from './types';
 async function readPrograms(path: string, signal: AbortSignal): Promise<Result<Program[]>> {
   const data: Program[] = [];
   let page: number | null = 1;
+
   do {
     const result: Result<Program[]> = await api<Program[]>(`${path}&page=${page}`, { signal });
+
     data.push(...result.data);
     page = result.meta?.next ?? null;
   } while (page !== null);
@@ -41,6 +43,7 @@ function Login({ complete }: { complete: (user: User) => void }) {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<unknown>(null);
   const [busy, setBusy] = useState(false);
+
   async function submit(event: FormEvent) {
     event.preventDefault();
     setError(null);
@@ -151,6 +154,7 @@ const navigation = [
   { path: '/activity', label: 'Activity', icon: 'activity' },
   { path: '/treasury', label: 'Treasury', icon: 'shield' },
 ];
+
 function Cabinet({ user, signedOut }: { user: User; signedOut: () => void }) {
   const [revision, setRevision] = useState(0);
   const programs = useResource<Program[]>('/api/v1/programs?perPage=100', revision, readPrograms);
@@ -167,6 +171,7 @@ function Cabinet({ user, signedOut }: { user: User; signedOut: () => void }) {
   const program = programs.data?.find((p) => p.programId === selection) ?? programs.data?.[0];
   const canTreasury = user.roles.includes('TREASURY') || user.roles.includes('APP_ADMIN');
   const title = navigation.find((n) => location.pathname === n.path)?.label ?? 'Overview';
+
   useEffect(() => {
     setMobile(false);
     setProfile(false);
@@ -197,6 +202,7 @@ function Cabinet({ user, signedOut }: { user: User; signedOut: () => void }) {
       capture: (id, view) => setCaptures((current) => ({ ...current, [id]: view })),
     }
     : null;
+
   async function leave() {
     setLoggingOut(true);
     try {
@@ -467,6 +473,7 @@ export function App() {
   const [user, setUser] = useState<User | null>(null);
   const [booting, setBooting] = useState(hasSession());
   const [error, setError] = useState<unknown>(null);
+
   useEffect(() => {
     if (hasSession())
       api<User>('/api/v1/users/me')
@@ -475,15 +482,18 @@ export function App() {
           if (!(failure instanceof ApiError) || failure.status !== 401) setError(failure);
         })
         .finally(() => setBooting(false));
+
     const unauthorized = () => {
       clearSession();
       setUser(null);
     };
+
     window.addEventListener('capacity:unauthorized', unauthorized);
 
     return () => window.removeEventListener('capacity:unauthorized', unauthorized);
   }, []);
   if (booting) return <Loading />;
+
   if (!user)
     return (
       <>

@@ -4,6 +4,7 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { createApplication } from '../dist/core/app/create-application.js';
 
 const app = await createApplication();
+
 try {
   const document = SwaggerModule.createDocument(
     app,
@@ -13,6 +14,7 @@ try {
       .addBearerAuth()
       .build(),
   );
+
   await writeFile(
     process.env.OPENAPI_OUTPUT ?? 'openapi.json',
     JSON.stringify(document, null, 2) + '\n',

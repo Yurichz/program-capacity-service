@@ -7,6 +7,7 @@ import { join, resolve, sep } from 'node:path';
 const root = resolve('.');
 const scratch = await mkdtemp(join(tmpdir(), 'capacity-audit-mutation-'));
 const output = resolve('.ci-artifacts/verification');
+
 await mkdir(output, { recursive: true });
 try {
   await cp('dist', join(scratch, 'dist'), { recursive: true });
@@ -18,6 +19,7 @@ try {
   const run = async (name) => {
     const report = join(output, name + '.json');
     let status = 0, log = '';
+
     try {
       log = execFileSync(process.execPath, [
         '--experimental-vm-modules', join(root, 'node_modules/jest/bin/jest.js'),
@@ -27,16 +29,20 @@ try {
       status = error.status;
       log = String(error.stdout) + String(error.stderr);
     }
+
     await writeFile(join(output, name + '.log'), log);
 
     return { status, report: JSON.parse(await readFile(report, 'utf8')) };
   };
+
   assert.equal((await run('mutation-control')).status, 0);
   const helper = join(scratch, 'dist/helpers/capacity.helpers.js');
   const original = await readFile(helper, 'utf8');
+
   assert.equal(original.split('.ceil()').length, 2);
   await writeFile(helper, original.replace('.ceil()', '.floor()'));
   const mutated = await run('mutation-floor');
+
   assert.notEqual(mutated.status, 0);
   assert.ok(mutated.report.testResults.flatMap((suite) => suite.assertionResults).some(
     (result) => result.status === 'failed' && result.title.includes('FX rounds toward capacity consumption'),

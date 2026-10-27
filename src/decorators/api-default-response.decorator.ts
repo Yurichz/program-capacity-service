@@ -6,8 +6,10 @@ export function ApiDefaultResponse(
   options: { status?: number; array?: boolean; paginated?: boolean } = {},
 ) {
   const status = options.status ?? 200;
+
   if (status === 204)
     return applyDecorators(HttpCode(204), ApiResponse({ status: 204, description: 'No content' }));
+
   const item: { $ref: string } | Record<string, never> = entity
     ? { $ref: getSchemaPath(entity) }
     : {};

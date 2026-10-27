@@ -63,6 +63,7 @@ export const eventSchema = z.discriminatedUnion('type', [
     })
     .strict(),
 ]);
+
 export type TreasuryEvent = z.infer<typeof eventSchema>;
 export type Coordinates = { topic: string; partition: number; offset: string };
 export type TreasuryResult = { code: string; eventId?: string; programId?: string };

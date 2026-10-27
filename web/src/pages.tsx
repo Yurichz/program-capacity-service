@@ -21,6 +21,7 @@ import type { EventEnvelope, Movement, Program, Reservation, TreasuryEvent, View
 
 const base = (id: string) => `/api/v1/programs/${id}`;
 const internal = (id: string) => `/api/v1/internal/programs/${id}`;
+
 function canWrite(roles: string[]) {
   return roles.includes('USER') || roles.includes('APP_ADMIN');
 }
@@ -375,6 +376,7 @@ export function Reservations({ program, revision, reserve, details, user }: Work
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('');
   const [currency, setCurrency] = useState('');
+
   useEffect(() => {
     const timer = setTimeout(() => {
       setQuery(search);
@@ -487,6 +489,7 @@ export function Reservations({ program, revision, reserve, details, user }: Work
 }
 export function Activity({ program, revision }: Workspace) {
   const [page, setPage] = useState(1);
+
   useEffect(() => setPage(1), [program.programId]);
   const rows = useResource<Movement[]>(
     `${base(program.programId)}/movements?page=${page}&perPage=10`,
@@ -582,6 +585,7 @@ export function ReserveDialog({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [uncertain, setUncertain] = useState(false);
+
   async function submit(event: FormEvent) {
     event.preventDefault();
     setError('');
@@ -592,6 +596,7 @@ export function ReserveDialog({
 
       return;
     }
+
     setBusy(true);
     try {
       const r = await command<Reservation>(`${base(program.programId)}/reservations`, {
@@ -599,9 +604,11 @@ export function ReserveDialog({
         amount,
         currency,
       });
+
       complete(r.data);
     } catch (failure) {
       const unknown = failure instanceof ApiError && failure.uncertain;
+
       setUncertain(unknown);
       setError(
         unknown
@@ -716,6 +723,7 @@ export function ReservationDetails({
   const [error, setError] = useState<unknown>(null);
   const [uncertain, setUncertain] = useState(false);
   const current = useResource<Reservation>(`${base(row.programId)}/reservations/${row.id}`);
+
   useEffect(() => {
     if (current.data)
       setRow((previous) =>
@@ -731,6 +739,7 @@ export function ReservationDetails({
         `${base(row.programId)}/reservations/${row.id}/release`,
         {},
       );
+
       setRow(result.data);
       setConfirm(false);
       setUncertain(false);
@@ -859,6 +868,7 @@ export function Treasury({ program, revision, refresh, notify, captures, capture
   const [outcome, setOutcome] = useState('');
   const mounted = useRef(true);
   const captured = captures[id];
+
   useEffect(() => {
     mounted.current = true;
     setPage(1);
@@ -866,6 +876,7 @@ export function Treasury({ program, revision, refresh, notify, captures, capture
     setOutcome('');
     setError(null);
     const saved = sessionStorage.getItem(`capacity.event.${id}`);
+
     setLast(saved ? JSON.parse(saved) : null);
 
     return () => {
@@ -877,12 +888,15 @@ export function Treasury({ program, revision, refresh, notify, captures, capture
   }
   async function check(event: EventEnvelope) {
     const end = Date.now() + 20000;
+
     do {
       const result = await api<TreasuryEvent[]>(
         `${internal(id)}/treasury-events?eventId=${event.eventId}`,
       );
       const code = result.data[0]?.resultCode;
+
       if (!mounted.current) return;
+
       if (code) {
         setOutcome(code === 'APPLIED' ? 'Applied' : reason(code));
         refresh();
@@ -892,8 +906,10 @@ export function Treasury({ program, revision, refresh, notify, captures, capture
 
         return;
       }
+
       await new Promise((resolve) => setTimeout(resolve, 500));
     } while (Date.now() < end);
+
     if (mounted.current) setOutcome('Published · awaiting durable confirmation');
   }
   async function publish(event: EventEnvelope) {
@@ -905,6 +921,7 @@ export function Treasury({ program, revision, refresh, notify, captures, capture
       body: JSON.stringify(event),
     });
     if (!mounted.current) return;
+
     setOutcome('Published');
     await check(event);
   }
@@ -917,21 +934,28 @@ export function Treasury({ program, revision, refresh, notify, captures, capture
 
         return;
       }
+
       if (kind === 'retry' && last) {
         await publish(last);
 
         return;
       }
+
       const current = await freshView();
+
       if (kind === 'capture') {
         capture(id, current);
         notify(`Snapshot captured at state version ${current.stateVersion}.`);
 
         return;
       }
+
       if (!config.data) throw new ApiError(503, 'Local demo tools are unavailable.');
+
       const selected = kind === 'captured' ? captured : current;
+
       if (!selected) throw new ApiError(422, 'Capture a snapshot first.');
+
       if (kind === 'limit') {
         try {
           if (minor(limit, current.currency) < 0n) throw new Error();
@@ -939,6 +963,7 @@ export function Treasury({ program, revision, refresh, notify, captures, capture
           throw new ApiError(422, 'Enter a valid non-negative limit in the program currency.');
         }
       }
+
       const envelope: EventEnvelope = {
         schemaVersion: 1,
         eventId: crypto.randomUUID(),
@@ -957,6 +982,7 @@ export function Treasury({ program, revision, refresh, notify, captures, capture
               reservations: selected.reservations,
             },
       };
+
       await publish(envelope);
     } catch (failure) {
       if (mounted.current) {
@@ -970,12 +996,14 @@ export function Treasury({ program, revision, refresh, notify, captures, capture
   }
   function exportView() {
     if (!view.data) return;
+
     const href = URL.createObjectURL(
       new Blob([JSON.stringify(view.data, null, 2)], {
         type: 'application/json',
       }),
     );
     const link = document.createElement('a');
+
     link.href = href;
     link.download = `program-${id}-snapshot.json`;
     link.click();

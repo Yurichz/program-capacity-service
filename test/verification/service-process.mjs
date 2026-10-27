@@ -16,6 +16,7 @@ export function services(db) {
   const prisma = prismaFor(db);
   const repository = new CapacityRepository(prisma);
   const health = new ConsumerHealth();
+
   health.connected = true;
   const transactions = new FinancialTransactionService(prisma);
   const cl = new CapacityClService(repository, health, new FxRateProvider(), transactions, prisma);
@@ -31,9 +32,11 @@ if (process.argv.includes('--child')) {
   Logger.overrideLogger(false);
   const db = database(testDatabaseUrl(process.env.TEST_DATABASE_URL));
   const { capacity } = services(db);
+
   process.on('message', async ({ id, method, args }) => {
     try {
       const value = await capacity[method](...args);
+
       process.send({ id, value });
     } catch (error) {
       process.send({ id, error: { message: error.message, code: error.code } });

@@ -11,6 +11,7 @@ test('demo publisher verifies core resource access, bounds payloads and preserve
   const core = createServer((req, res) => {
     authChecks++;
     const status = req.headers.authorization === 'Bearer permitted' ? 200 : 403;
+
     res.writeHead(status, { 'content-type': 'application/json' });
     res.end(
       JSON.stringify(
@@ -20,6 +21,7 @@ test('demo publisher verifies core resource access, bounds payloads and preserve
       ),
     );
   });
+
   await new Promise((resolve) => core.listen(0, '127.0.0.1', resolve));
   t.after(() => core.close());
   const id = '11111111-1111-4111-8111-111111111111';
@@ -30,10 +32,12 @@ test('demo publisher verifies core resource access, bounds payloads and preserve
     producer: {
       send: async (value) => {
         if (failing) throw new Error('private infrastructure detail');
+
         published.push(value);
       },
     },
   });
+
   await new Promise((resolve) => app.listen(0, '127.0.0.1', resolve));
   t.after(() => app.close());
   const origin = `http://127.0.0.1:${app.address().port}`,
@@ -53,6 +57,7 @@ test('demo publisher verifies core resource access, bounds payloads and preserve
       headers: { authorization, 'content-type': 'application/json' },
       body: typeof body === 'string' ? body : JSON.stringify(body),
     });
+
   assert.equal((await post(event, '')).status, 401);
   assert.equal(authChecks, 0);
   assert.equal((await post(event, 'Bearer forbidden')).status, 403);
@@ -62,6 +67,7 @@ test('demo publisher verifies core resource access, bounds payloads and preserve
   assert.equal((await post('{broken')).status, 422);
   assert.equal((await post('x'.repeat(2 * 1024 * 1024 + 1))).status, 413);
   const accepted = await post();
+
   assert.equal(accepted.status, 202);
   assert.deepEqual((await accepted.json()).data, {
     eventId: event.eventId,
@@ -73,9 +79,11 @@ test('demo publisher verifies core resource access, bounds payloads and preserve
   assert.equal(published[0].messages[0].value, published[1].messages[0].value);
   failing = true;
   const failed = await post();
+
   assert.equal(failed.status, 503);
   assert.ok(!(await failed.text()).includes('private infrastructure'));
   const disabled = createDemoServer({ enabled: false });
+
   await new Promise((resolve) => disabled.listen(0, '127.0.0.1', resolve));
   t.after(() => disabled.close());
   assert.equal(

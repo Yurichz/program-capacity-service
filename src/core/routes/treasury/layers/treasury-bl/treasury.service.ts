@@ -17,6 +17,7 @@ export class TreasuryService {
   async events(principal: Principal, programId: string, query: TreasuryEventListQueryDto) {
     if (!principal.permissions.includes('treasury:reconcile'))
       return fail(403, 'FORBIDDEN', 'Permission required');
+
     const result = await this.repository.events(principal.tenantId, programId, query);
 
     return new ApiResult(

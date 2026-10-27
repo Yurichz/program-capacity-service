@@ -45,7 +45,9 @@ export class CapacityClService {
     permission: string,
   ): Promise<Program & { _count: { reservations: number } }> {
     const p = await this.repository.find(principal.tenantId, id);
+
     if (!p) return fail(404, 'NOT_FOUND', 'Program not found');
+
     if (!principal.permissions.includes(permission))
       return fail(403, 'FORBIDDEN', 'Permission required');
 
@@ -58,6 +60,7 @@ export class CapacityClService {
   ): Outcome | undefined {
     if (saved.fingerprint !== hash)
       return fail(409, 'IDEMPOTENCY_KEY_REUSED', 'Key already belongs to a different request');
+
     if (saved.status !== null && saved.result !== null)
       return { status: saved.status, body: saved.result as Record<string, unknown> };
 
@@ -75,21 +78,29 @@ export class CapacityClService {
   ): Promise<Outcome> {
     if (this.health.stopping)
       return fail(503, 'SERVICE_UNAVAILABLE', 'Service temporarily unavailable');
+
     const started = performance.now();
     const result = await this.transactions.run(async (tx) => {
       await this.repository.claim(tx, principal, key, id, hash);
       const saved = await this.repository.request(tx, principal, key);
       const replay = this.replay(saved, hash);
+
       if (replay) return replay;
+
       const p = await this.repository.lock(tx, principal.tenantId, id);
+
       if (!p) return fail(404, 'NOT_FOUND', 'Program not found');
+
       if (this.health.stopping)
         return fail(503, 'SERVICE_UNAVAILABLE', 'Service temporarily unavailable');
+
       const result = await work(tx, p);
+
       await this.repository.saveResult(tx, principal, key, result);
 
       return result;
     });
+
     this.logger.log({
       requestId,
       operation,
@@ -119,10 +130,13 @@ export class CapacityClService {
       amount: formatMoney(amount, input.currency),
     });
     const saved = await this.repository.saved(principal, key);
+
     if (saved) {
       const replay = this.replay(saved, hash);
+
       if (replay) return replay;
     }
+
     const currency = currencySchema.parse(initial.currency);
     const quote =
       input.currency === currency
@@ -137,16 +151,23 @@ export class CapacityClService {
           'A fresh treasury snapshot is required',
           requestId,
         );
+
       if (!validQuote(quote)) return fail(503, 'FX_UNAVAILABLE', 'FX quote expired');
+
       const existing = await this.repository.invoice(tx, principal.tenantId, input.invoiceId);
+
       if (existing)
         return refusal('DUPLICATE_INVOICE', 'Invoice has already been financed', requestId);
+
       if (held > p.limitMinor - p.reservedMinor)
         return refusal('INSUFFICIENT_CAPACITY', 'Insufficient capacity', requestId);
+
       if ((await this.repository.activeCount(tx, principal.tenantId, id)) >= MAX_ACTIVE)
         return refusal('RESERVATION_LIMIT', 'Maximum active reservations reached', requestId);
+
       if (p.stateVersion === MAX_MINOR)
         return refusal('VERSION_EXHAUSTED', 'Program version exhausted', requestId);
+
       const rid = randomUUID();
       const inserted = await this.repository.insert(tx, {
         id: rid,
@@ -161,12 +182,15 @@ export class CapacityClService {
         fxSource: quote.source,
         fxAsOf: quote.asOf,
       });
+
       if (!inserted)
         return refusal('DUPLICATE_INVOICE', 'Invoice has already been financed', requestId);
+
       const updated = await this.repository.updateProgram(tx, p, {
         reservedMinor: p.reservedMinor + held,
         stateVersion: p.stateVersion + 1n,
       });
+
       await this.repository.movement(
         tx,
         updated,
@@ -205,11 +229,15 @@ export class CapacityClService {
 
     return this.command(principal, id, key, hash, requestId, 'release', async (tx, p) => {
       const r = await this.repository.reservation(tx, principal.tenantId, id, rid);
+
       if (!r) return refusal('NOT_FOUND', 'Reservation not found', requestId, 404);
+
       if (r.status !== 'ACTIVE')
         return { status: 200, body: reservationDto(r, currencySchema.parse(p.currency)) };
+
       if (p.stateVersion === MAX_MINOR)
         return refusal('VERSION_EXHAUSTED', 'Program version exhausted', requestId);
+
       const closed = await this.repository.close(tx, {
         id: rid,
         tenantId: principal.tenantId,
@@ -219,6 +247,7 @@ export class CapacityClService {
         reservedMinor: p.reservedMinor - r.reservedMinor,
         stateVersion: p.stateVersion + 1n,
       });
+
       await this.repository.movement(
         tx,
         updated,

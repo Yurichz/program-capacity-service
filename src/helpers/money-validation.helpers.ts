@@ -9,7 +9,9 @@ export function IsInvoiceAmount() {
         const currency = currencySchema.safeParse(
           (args?.object as { currency?: unknown } | undefined)?.currency,
         );
+
         if (typeof value !== 'string' || !currency.success) return false;
+
         try {
           parseMoney(value, currency.data);
 

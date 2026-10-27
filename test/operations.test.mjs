@@ -11,6 +11,7 @@ test('database diagnostics contain identifiers, never SQL, parameters or credent
     code: 'P2010',
     meta: { driverAdapterError: { cause: { originalCode: '55P03' } } },
   });
+
   assert.equal(isTransientDatabaseError(error), true);
   assert.deepEqual(databaseErrorContext(error), {
     errorType: 'Error',
@@ -47,6 +48,7 @@ test('shutdown during Kafka connect waits for startup and cannot start a new run
     health,
     pino({ level: 'silent' }),
   );
+
   subject.consumer = {
     connect: async () => {
       connected();
@@ -67,8 +69,10 @@ test('shutdown during Kafka connect waits for startup and cannot start a new run
     },
   };
   const startup = subject.start();
+
   await entered;
   const shutdown = subject.stop();
+
   assert.equal(health.connected, false);
   finish();
   await Promise.all([startup, shutdown]);
@@ -94,6 +98,7 @@ test('authenticated readiness, shutdown admission and real PostgreSQL lock timeo
     await import('../dist/core/providers/kafka/consumer-health.provider.js');
   const { ApiExceptionFilter } = await import('../dist/filters/api-exception.filter.js');
   const app = await createApplication();
+
   app.useLogger(false);
   t.after(() => app.close());
   await app.listen(0, '127.0.0.1');
@@ -111,15 +116,18 @@ test('authenticated readiness, shutdown admission and real PostgreSQL lock timeo
       },
       ...(body ? { body: JSON.stringify(body) } : {}),
     });
+
   assert.equal((await send('health/ready')).status, 401);
   assert.equal((await send('auth/sign-up', { email, password })).status, 201);
   const {
     data: { accessToken },
   } = await (await send('auth/sign-in', { email, password })).json();
+
   assert.equal((await send('health', undefined, accessToken)).status, 200);
   assert.equal((await send('health/ready', undefined, accessToken)).status, 503);
   health.connected = true;
   const ready = await send('health/ready', undefined, accessToken);
+
   assert.equal(ready.status, 200);
   assert.match(ready.headers.get('x-request-id'), /^[0-9a-f-]{36}$/);
   assert.deepEqual(await ready.json(), { success: true, data: { status: 'ready' } });
@@ -128,6 +136,7 @@ test('authenticated readiness, shutdown admission and real PostgreSQL lock timeo
   health.stopping = false;
 
   const id = randomUUID();
+
   await prisma.root.program.create({
     data: { id, tenantId: 'lock-test', currency: 'USD', limitMinor: 100n },
   });
@@ -144,6 +153,7 @@ test('authenticated readiness, shutdown admission and real PostgreSQL lock timeo
     await held;
   });
   let failure;
+
   try {
     await locked;
     await prisma.root
@@ -158,6 +168,7 @@ test('authenticated readiness, shutdown admission and real PostgreSQL lock timeo
     unlock();
     await holder;
   }
+
   assert.ok(failure, 'Conflicting lock must fail');
   assert.equal(databaseErrorContext(failure).sqlState, '55P03');
   assert.equal(isTransientDatabaseError(failure), true);
@@ -172,6 +183,7 @@ test('authenticated readiness, shutdown admission and real PostgreSQL lock timeo
       body = value;
     },
   };
+
   new ApiExceptionFilter().catch(failure, {
     switchToHttp: () => ({
       getRequest: () => ({ id: randomUUID(), method: 'POST' }),

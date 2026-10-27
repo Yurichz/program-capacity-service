@@ -26,9 +26,13 @@ export abstract class TxScopeRepository<T> {
       get(object, key, receiver) {
         if (key === '$')
           return object.model(client ?? object.explicitClient ?? object.prisma.client);
+
         if (key === 'explicitClient') return client ?? object.explicitClient;
+
         const value = Reflect.get(object, key, receiver);
+
         if (typeof value !== 'function') return value;
+
         if (!cache.has(key)) cache.set(key, value.bind(proxy));
 
         return cache.get(key);

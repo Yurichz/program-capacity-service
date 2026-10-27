@@ -51,6 +51,7 @@ export class TreasuryConsumer {
           if (!this.stopping) void this.invalidate();
         });
     };
+
     this.consumer.on(this.consumer.events.GROUP_JOIN, connected);
     this.consumer.on(this.consumer.events.HEARTBEAT, connected);
     this.consumer.on(this.consumer.events.CRASH, () => {
@@ -86,10 +87,13 @@ export class TreasuryConsumer {
   private async startConsumer(): Promise<void> {
     await this.treasury.requireReconciliation();
     if (this.stopping) return;
+
     await this.consumer.connect();
     if (this.stopping) return;
+
     await this.consumer.subscribe({ topic: this.config.KAFKA_TOPIC, fromBeginning: true });
     if (this.stopping) return;
+
     await this.consumer.run({
       autoCommit: false,
       eachBatchAutoResolve: false,
@@ -97,6 +101,7 @@ export class TreasuryConsumer {
       eachBatch: (payload) => this.batch(payload),
     });
     if (this.stopping) return;
+
     // Exceed the 10-second transaction ceiling so a bounded snapshot is not
     // mistaken for a disconnected consumer between explicit heartbeats.
     this.watchdog = setInterval(() => {
@@ -115,7 +120,9 @@ export class TreasuryConsumer {
     await this.invalidating;
     for (const message of batch.messages) {
       if (!isRunning() || isStale() || this.stopping) return;
+
       const started = performance.now();
+
       try {
         await heartbeat();
         const result = await this.treasury.process(
@@ -123,7 +130,9 @@ export class TreasuryConsumer {
           message.key?.toString() ?? null,
           { topic: batch.topic, partition: batch.partition, offset: message.offset },
         );
+
         if (!isRunning() || isStale()) return;
+
         await heartbeat();
         await this.consumer.commitOffsets([
           {
@@ -168,6 +177,7 @@ export class TreasuryConsumer {
     this.stopping = true;
     this.health.connected = false;
     if (this.watchdog) clearInterval(this.watchdog);
+
     try {
       await this.startTask;
     } finally {

@@ -25,6 +25,7 @@ export class UserRepository extends TxScopeRepository<Prisma.TransactionClient['
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002')
         throw new ConflictException(ERRORS.USER_CONFLICT);
+
       throw error;
     }
   }
@@ -39,6 +40,7 @@ export class UserRepository extends TxScopeRepository<Prisma.TransactionClient['
 
   async findByIdOrThrow(id: number) {
     const user = await this.findById(id);
+
     if (!user) throw new NotFoundException(ERRORS.USER_NOT_FOUND);
 
     return user;

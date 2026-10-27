@@ -20,8 +20,10 @@ export class CapacitySubjectHook implements SubjectHook {
 
   async run(request: AuthorizableRequest) {
     if (!request.user) return undefined;
+
     const programId = request.params.programId;
     const reservationId = request.params.reservationId;
+
     if (
       typeof programId !== 'string' ||
       !isUUID(programId) ||
@@ -30,8 +32,11 @@ export class CapacitySubjectHook implements SubjectHook {
       throw new ValidationException([
         { property: 'params', constraints: { uuid: 'Resource identifiers must be UUIDs' } },
       ]);
+
     const program = await this.capacity.find(request.user.tenantId, programId);
+
     if (!program) return undefined;
+
     if (
       typeof reservationId === 'string' &&
       !(await this.capacity.readReservation(request.user.tenantId, programId, reservationId))

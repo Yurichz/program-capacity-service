@@ -12,11 +12,15 @@ import { POSTGRES_IMAGE, KAFKA_IMAGE, prisma, testDatabaseUrl } from '../../scri
 
 async function until(read, accept, description, timeout = 60000) {
   const deadline = Date.now() + timeout;
+
   while (Date.now() < deadline) {
     const value = await read();
+
     if (accept(value)) return value;
+
     await setTimeout(50);
   }
+
   throw new Error('Timed out waiting for ' + description);
 }
 
@@ -27,10 +31,12 @@ function worker(env, crash = false) {
   });
   const messages = [];
   let output = '';
+
   for (const stream of [child.stdout, child.stderr])
     stream.on('data', (chunk) => {
       output = (output + chunk).slice(-12000);
     });
+
   child.on('message', (message) => messages.push(message));
   const closed = once(child, 'exit');
 
@@ -52,16 +58,20 @@ function worker(env, crash = false) {
     },
     async kill() {
       if (child.exitCode === null && child.signalCode === null) child.kill('SIGKILL');
+
       await closed;
     },
     async stop() {
       if (child.exitCode !== null || child.signalCode !== null) return;
+
       child.send({ type: 'stop' });
       const result = await Promise.race([closed, setTimeout(40000, null, { ref: false })]);
+
       if (!result) {
         await this.kill();
         throw new Error('Worker graceful shutdown exceeded 40 seconds: ' + output);
       }
+
       assert.equal(result[0], 0, 'Worker must stop cleanly: ' + output);
     },
   };
@@ -73,12 +83,15 @@ test('KAFKA-CRASH-01: process death after durable DB commit replays once and rec
   const owned = [];
   const workers = [];
   let db, producer, admin;
+
   try {
     const postgres = await new PostgreSqlContainer(POSTGRES_IMAGE)
       .withDatabase('app_test_crash_' + randomUUID().replaceAll('-', ''))
       .start();
+
     owned.push(postgres);
     const url = testDatabaseUrl(postgres.getConnectionUri());
+
     prisma(['migrate', 'deploy'], { ...process.env, DATABASE_URL: url });
     db = database(url);
     const broker = await new GenericContainer(KAFKA_IMAGE)
@@ -103,8 +116,10 @@ test('KAFKA-CRASH-01: process death after durable DB commit replays once and rec
       .withWaitStrategy(Wait.forLogMessage('WAITING_FOR_AUDIT_SCRIPT'))
       .withStartupTimeout(60000)
       .start();
+
     owned.push(broker);
     const brokers = [`${broker.getHost()}:${broker.getMappedPort(9092)}`];
+
     await broker.copyContentToContainer([{
       target: '/tmp/audit-start.sh',
       content: `export KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://${brokers[0]}\nexec /etc/kafka/docker/run\n`,
@@ -115,15 +130,18 @@ test('KAFKA-CRASH-01: process death after durable DB commit replays once and rec
       logLevel: logLevel.NOTHING,
       retry: { retries: 20, initialRetryTime: 100 },
     });
+
     admin = kafka.admin();
     await admin.connect();
     const topic = 'verification-' + randomUUID();
     const group = 'verification-' + randomUUID();
+
     await admin.createTopics({ topics: [{ topic, numPartitions: 1, replicationFactor: 1 }] });
     producer = kafka.producer({ allowAutoTopicCreation: false });
     await producer.connect();
     const programId = randomUUID();
     const tenantId = 'verification-' + randomUUID();
+
     await db.program.create({ data: { id: programId, tenantId, currency: 'USD', limitMinor: 10000n } });
     const childEnv = {
       AUDIT_DATABASE_URL: url,
@@ -133,6 +151,7 @@ test('KAFKA-CRASH-01: process death after durable DB commit replays once and rec
       AUDIT_TREASURY_SOURCE: 'verification-' + randomUUID(),
     };
     const first = worker(childEnv, true);
+
     workers.push(first);
     await first.message('group-join');
     const row = {
@@ -167,10 +186,13 @@ test('KAFKA-CRASH-01: process death after durable DB commit replays once and rec
       topic,
       messages: [{ key: `${tenantId}:${programId}`, value: JSON.stringify(event) }],
     });
+
     await publish(initial);
     const held = await first.message('before-offset');
+
     assert.equal(held.offsets[0].offset, '1');
     const before = await db.program.findUniqueOrThrow({ where: { id: programId } });
+
     assert.equal(before.stateVersion, 1n);
     assert.equal(before.lastAppliedTreasuryRevision, 1n);
     assert.equal(before.reservedMinor, 1000n);
@@ -178,17 +200,21 @@ test('KAFKA-CRASH-01: process death after durable DB commit replays once and rec
     assert.equal((await db.treasuryInbox.findFirstOrThrow({ where: { eventId: initial.eventId } })).result.code, 'APPLIED');
     assert.equal(await db.capacityMovement.count({ where: { programId } }), 1);
     const offsets = () => admin.fetchOffsets({ groupId: group, topics: [topic] });
+
     assert.ok(BigInt((await offsets())[0].partitions[0].offset) <= 0n);
     await first.kill();
     assert.ok(first.child.exitCode !== 0 || first.child.signalCode, 'The first process was forcibly terminated');
     console.log('DB commit was durable; broker offset remained uncommitted; first process was killed.');
 
     const second = worker(childEnv);
+
     workers.push(second);
     const restartedJoin = await second.message('group-join');
+
     assert.notEqual(restartedJoin.pid, held.pid);
     await until(offsets, (value) => value[0].partitions[0].offset === '1', 'replayed broker offset');
     const replayed = await db.program.findUniqueOrThrow({ where: { id: programId } });
+
     assert.equal(replayed.stateVersion, before.stateVersion);
     assert.equal(replayed.limitMinor, before.limitMinor);
     assert.equal(replayed.reservedMinor, before.reservedMinor);
@@ -206,6 +232,7 @@ test('KAFKA-CRASH-01: process death after durable DB commit replays once and rec
     });
     await until(offsets, (value) => value[0].partitions[0].offset === '2', 'fresh snapshot broker offset');
     const recovered = await db.program.findUniqueOrThrow({ where: { id: programId } });
+
     assert.equal(recovered.syncStatus, 'READY');
     assert.equal(recovered.limitMinor, 12500n);
     assert.equal(recovered.stateVersion, 2n);
@@ -213,14 +240,17 @@ test('KAFKA-CRASH-01: process death after durable DB commit replays once and rec
     assert.equal(await db.capacityMovement.count({ where: { programId } }), 2);
     const active = await db.reservation.aggregate({ where: { programId, status: 'ACTIVE' }, _sum: { reservedMinor: true } });
     const ledger = await db.capacityMovement.aggregate({ where: { programId }, _sum: { reservedDelta: true } });
+
     assert.equal(active._sum.reservedMinor ?? 0n, recovered.reservedMinor);
     assert.equal(ledger._sum.reservedDelta ?? 0n, recovered.reservedMinor);
     await t.test('AUD-KAFKA-RISK-01: characterize malformed JSON with a valid resource key', async () => {
       await producer.send({ topic, messages: [{ key: `${tenantId}:${programId}`, value: '{malformed' }] });
       await until(offsets, (value) => value[0].partitions[0].offset === '3', 'quarantined malformed offset');
       const quarantined = await db.treasuryQuarantine.findFirstOrThrow({ where: { topic, offset: '2' } });
+
       assert.equal(quarantined.reason, 'INVALID_EVENT');
       const unchanged = await db.program.findUniqueOrThrow({ where: { id: programId } });
+
       assert.equal(unchanged.syncStatus, 'READY', 'Characterization: a key alone does not invalidate the program');
       assert.equal(unchanged.stateVersion, recovered.stateVersion);
       assert.equal(unchanged.highestSeenTreasuryRevision, recovered.highestSeenTreasuryRevision);
@@ -228,6 +258,7 @@ test('KAFKA-CRASH-01: process death after durable DB commit replays once and rec
     });
     console.log('Fresh process replayed exactly once; persisted versions/ledger were preserved; revision 2 restored READY.');
     let third;
+
     await t.test('AUD-KAFKA-QUARANTINE-01: quarantine persistence failure cannot acknowledge a bad or later message', async () => {
       const later = {
         ...initial,
@@ -236,6 +267,7 @@ test('KAFKA-CRASH-01: process death after durable DB commit replays once and rec
         occurredAt: new Date().toISOString(),
         payload: { currency: 'USD', limit: '125.00', baseStateVersion: '2', reservations: [row] },
       };
+
       // Fault injection is confined to this harness's disposable PostgreSQL instance.
       await db.$executeRaw`ALTER TABLE "TreasuryQuarantine" RENAME TO "AuditUnavailableQuarantine"`;
       try {
@@ -247,6 +279,7 @@ test('KAFKA-CRASH-01: process death after durable DB commit replays once and rec
           ],
         });
         const failed = await second.message('process-failed');
+
         assert.equal(failed.coordinates.topic, topic);
         assert.equal(failed.coordinates.offset, '3');
         await second.message('consumer-crash');
@@ -257,6 +290,7 @@ test('KAFKA-CRASH-01: process death after durable DB commit replays once and rec
       } finally {
         await db.$executeRaw`ALTER TABLE "AuditUnavailableQuarantine" RENAME TO "TreasuryQuarantine"`;
       }
+
       third = worker(childEnv);
       workers.push(third);
       await third.message('group-join');
@@ -264,6 +298,7 @@ test('KAFKA-CRASH-01: process death after durable DB commit replays once and rec
       assert.equal((await db.treasuryQuarantine.findFirstOrThrow({ where: { topic, offset: '3' } })).reason, 'INVALID_EVENT');
       assert.equal((await db.treasuryInbox.findFirstOrThrow({ where: { eventId: later.eventId } })).result.code, 'APPLIED');
       const afterReplay = await db.program.findUniqueOrThrow({ where: { id: programId } });
+
       assert.equal(afterReplay.syncStatus, 'READY');
       assert.equal(afterReplay.stateVersion, 3n);
       assert.equal(afterReplay.reservedMinor, 1000n);
@@ -274,6 +309,7 @@ test('KAFKA-CRASH-01: process death after durable DB commit replays once and rec
       const joins = (current) => current.messages.filter((message) => message.type === 'group-join');
       const previousJoins = joins(third).length;
       const fourth = worker(childEnv);
+
       workers.push(fourth);
       await fourth.message('group-join');
       await until(() => joins(third), (value) => value.length > previousJoins, 'existing consumer rejoin');
@@ -286,10 +322,12 @@ test('KAFKA-CRASH-01: process death after durable DB commit replays once and rec
         worker: current,
         partitions: joins(current).at(-1).assignment[topic] ?? [],
       }));
+
       assert.equal(assignments.reduce((sum, current) => sum + current.partitions.length, 0), 1);
       const owner = assignments.find((current) => current.partitions.includes(0)).worker;
       const survivor = assignments.find((current) => current.worker !== owner).worker;
       const survivorJoins = joins(survivor).length;
+
       await owner.stop();
       await until(
         () => joins(survivor),
@@ -305,6 +343,7 @@ test('KAFKA-CRASH-01: process death after durable DB commit replays once and rec
       });
       await until(offsets, (value) => value[0].partitions[0].offset === '6', 'surviving consumer event');
       const afterRebalance = await db.program.findUniqueOrThrow({ where: { id: programId } });
+
       assert.equal(afterRebalance.syncStatus, 'READY');
       assert.equal(afterRebalance.stateVersion, 4n);
       assert.equal(afterRebalance.reservedMinor, 1000n);
@@ -315,10 +354,14 @@ test('KAFKA-CRASH-01: process death after durable DB commit replays once and rec
     });
   } finally {
     const results = await Promise.allSettled(workers.map((current) => current.kill()));
+
     for (const resource of [producer, admin])
       if (resource) results.push(...await Promise.allSettled([resource.disconnect()]));
+
     if (db) results.push(...await Promise.allSettled([db.$disconnect()]));
+
     for (const container of owned.reverse()) results.push(...await Promise.allSettled([container.stop()]));
+
     assert.deepEqual(results.filter((result) => result.status === 'rejected'), [], 'Owned resource cleanup must succeed');
   }
 });

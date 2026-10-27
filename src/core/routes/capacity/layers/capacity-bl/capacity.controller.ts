@@ -56,6 +56,7 @@ function respond(result: Outcome, response: Response) {
       String(result.body.message),
       String(result.body.requestId),
     );
+
   response.status(result.status);
 
   return result.body;

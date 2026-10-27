@@ -55,6 +55,7 @@ export class TokenService {
         issuer: this.config.getOrThrow<string>('JWT_ISSUER'),
         audience: this.config.getOrThrow<string>('JWT_AUDIENCE'),
       });
+
       if (
         claims.type !== type ||
         typeof claims.sub !== 'string' ||

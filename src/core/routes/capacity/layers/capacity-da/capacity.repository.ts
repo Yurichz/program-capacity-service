@@ -84,6 +84,7 @@ export class CapacityRepository extends TxScopeRepository<Prisma.TransactionClie
     const rows = await tx.$queryRaw<
       unknown[]
     >`SELECT "id" FROM "Program" WHERE "tenantId" = ${tenantId} AND "id" = ${id}::uuid FOR UPDATE`;
+
     z.array(z.object({ id: z.string().uuid() })).parse(rows);
 
     return tx.program.findUnique({ where: { tenantId_id: { tenantId, id } } });

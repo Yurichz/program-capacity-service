@@ -9,10 +9,14 @@ const cluster = await new PostgreSqlContainer(image)
   .withUsername('test')
   .withPassword('test')
   .start();
+
 try {
   const url = cluster.getConnectionUri();
+
   if (!new URL(url).pathname.startsWith('/app_test_')) throw new Error('Unexpected test database');
+
   const env = { ...process.env, DATABASE_URL: url, TEST_DATABASE_URL: url, LOG_LEVEL: 'silent' };
+
   execFileSync(process.execPath, ['node_modules/prisma/build/index.js', 'migrate', 'deploy'], {
     env,
     stdio: 'inherit',
@@ -20,6 +24,7 @@ try {
   const suites = (await readdir('test'))
     .filter((file) => file.endsWith('.test.mjs'))
     .map((file) => 'test/' + file);
+
   execFileSync(process.execPath, ['--test', '--test-concurrency=1', ...suites], {
     env,
     stdio: 'inherit',
@@ -27,6 +32,7 @@ try {
 } finally {
   await cluster.stop();
 }
+
 if (!process.argv.includes('--core'))
   execFileSync(
     process.execPath,

@@ -50,12 +50,14 @@ describe('money, FX, schemas and canonical fingerprints', () => {
     expect(convert(1n, 'USD', 'KWD', '1')).toBe(10n);
     for (const rate of ['0', '-1', 'NaN', '1e9', '0.0000000000000000001'])
       expect(() => convert(1n, 'USD', 'USD', rate)).toThrow();
+
     expect(() => convert(MAX_MINOR, 'USD', 'USD', '2')).toThrow();
   });
   test('demo quotes use controlled time; expiry and future timestamps fail', async () => {
     const now = new Date('2026-01-01T00:00:00Z');
     const fx = new FxRateProvider(() => now);
     const quote = await fx.quote('EUR', 'USD');
+
     expect(quote.direction).toBe(DIRECTION);
     expect(validQuote(quote, now)).toBe(true);
     expect(validQuote(quote, new Date(+now + 60001))).toBe(false);

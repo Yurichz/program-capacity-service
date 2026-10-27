@@ -14,8 +14,10 @@ export class AbilityFactory {
   createForUser(user: AuthorizableUser): AppAbility {
     const builder = new AbilityBuilder<AppAbility>(createMongoAbility);
     const context = { user, can: builder.can.bind(builder), cannot: builder.cannot.bind(builder) };
+
     this.permissions.everyone?.(context);
     for (const role of user.roles) this.permissions[role]?.(context);
+
     if (this.options.superuserRole && user.roles.includes(this.options.superuserRole))
       builder.can(Actions.manage, 'all');
 

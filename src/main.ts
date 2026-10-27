@@ -10,8 +10,10 @@ const consumer = app.get(TreasuryConsumer);
 const health = app.get(ConsumerHealth);
 const logger = app.get(Logger);
 let shutdownTask: Promise<void> | undefined;
+
 async function bounded(task: Promise<unknown>, timeoutMs: number) {
   let timer: ReturnType<typeof setTimeout> | undefined;
+
   try {
     await Promise.race([
       task,
@@ -25,6 +27,7 @@ async function bounded(task: Promise<unknown>, timeoutMs: number) {
 }
 function shutdown() {
   if (shutdownTask) return shutdownTask;
+
   health.stopping = true;
   health.connected = false;
   shutdownTask = (async () => {
@@ -33,6 +36,7 @@ function shutdown() {
       logger.error('Shutdown deadline exceeded');
       process.exit(1);
     }, 35000);
+
     deadline.unref();
     try {
       try {
@@ -41,6 +45,7 @@ function shutdown() {
         logger.error({ ...databaseErrorContext(error), operation: 'consumer.stop' });
         process.exitCode = 1;
       }
+
       try {
         await bounded(app.close(), 12000);
       } catch (error) {
@@ -50,6 +55,7 @@ function shutdown() {
     } finally {
       clearTimeout(deadline);
     }
+
     if (process.exitCode) process.exit(1);
   })();
 
@@ -64,6 +70,7 @@ process.once('SIGINT', () => {
 try {
   await app.init();
   if (!health.stopping) await consumer.start();
+
   if (!health.stopping)
     await app.listen(app.get(ConfigService).getOrThrow<number>('PORT'), '0.0.0.0');
 } catch (error) {

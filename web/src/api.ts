@@ -18,6 +18,7 @@ let accessToken: string | null = null;
 let rotation: Promise<void> | null = null;
 const refreshKey = 'capacity.refresh';
 const pendingKey = 'capacity.pending';
+
 export function clearSession() {
   accessToken = null;
   for (const key of Object.keys(sessionStorage))
@@ -29,6 +30,7 @@ function savePair(pair: { accessToken: string; refreshToken: string }) {
 }
 async function raw<T>(path: string, init: RequestInit = {}): Promise<Result<T>> {
   let response: Response;
+
   try {
     response = await fetch(path, {
       ...init,
@@ -42,10 +44,14 @@ async function raw<T>(path: string, init: RequestInit = {}): Promise<Result<T>> 
     });
   } catch (error) {
     if (init.signal?.aborted) throw error;
+
     throw new ApiError(0, 'Connection interrupted. Please try again.');
   }
+
   if (response.status === 204) return { success: true, data: null as T };
+
   let value;
+
   try {
     value = await response.json();
   } catch {
@@ -54,6 +60,7 @@ async function raw<T>(path: string, init: RequestInit = {}): Promise<Result<T>> 
       'The service returned an unreadable response.',
     );
   }
+
   if (!response.ok)
     throw new ApiError(
       response.status,
@@ -61,6 +68,7 @@ async function raw<T>(path: string, init: RequestInit = {}): Promise<Result<T>> 
       value?.error?.details,
       value?.error?.code,
     );
+
   if (
     value === null ||
     typeof value !== 'object' ||
@@ -75,7 +83,9 @@ export async function refreshSession() {
   if (!rotation)
     rotation = (async () => {
       const refreshToken = sessionStorage.getItem(refreshKey);
+
       if (!refreshToken) throw new ApiError(401, 'Please sign in to continue.');
+
       try {
         savePair(
           (
@@ -90,6 +100,7 @@ export async function refreshSession() {
           clearSession();
           window.dispatchEvent(new Event('capacity:unauthorized'));
         }
+
         throw error;
       }
     })().finally(() => {
@@ -107,13 +118,18 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<Resu
         ...(accessToken ? { authorization: `Bearer ${accessToken}` } : {}),
       },
     });
+
   if (!accessToken) await refreshSession();
+
   const attemptedToken = accessToken;
+
   try {
     return await send();
   } catch (error) {
     if (!(error instanceof ApiError) || error.status !== 401) throw error;
+
     if (accessToken === attemptedToken) await refreshSession();
+
     try {
       return await send();
     } catch (retryError) {
@@ -121,6 +137,7 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<Resu
         clearSession();
         window.dispatchEvent(new Event('capacity:unauthorized'));
       }
+
       throw retryError;
     }
   }
@@ -141,6 +158,7 @@ export async function logout() {
   } catch (error) {
     if (!(error instanceof ApiError) || error.status !== 401) throw error;
   }
+
   clearSession();
 }
 export function hasSession() {
@@ -150,33 +168,42 @@ export async function command<T>(path: string, body: object) {
   const signature = path + '\n' + JSON.stringify(body);
   const pending = JSON.parse(sessionStorage.getItem(pendingKey) ?? '{}') as Record<string, string>;
   const key = pending[signature] ?? crypto.randomUUID();
+
   pending[signature] = key;
   sessionStorage.setItem(pendingKey, JSON.stringify(pending));
   const finish = () => {
     const current = JSON.parse(sessionStorage.getItem(pendingKey) ?? '{}');
+
     delete current[signature];
     sessionStorage.setItem(pendingKey, JSON.stringify(current));
   };
+
   try {
     const result = await api<T>(path, {
       method: 'POST',
       body: JSON.stringify(body),
       headers: { 'Idempotency-Key': key },
     });
+
     finish();
 
     return result;
   } catch (error) {
     if (error instanceof ApiError && !error.uncertain) finish();
+
     throw error;
   }
 }
 export function message(error: unknown): string {
   if (!(error instanceof ApiError)) return 'Something went wrong. Please try again.';
+
   if (error.code === 401001)
     return 'Invalid email or password. Check your credentials and try again.';
+
   if (error.status === 401) return 'Your session has expired. Please sign in again.';
+
   if (error.status === 403) return 'Your account does not have permission for this action.';
+
   if (error.status === 422 && error.details)
     return (
       Object.values(error.details)

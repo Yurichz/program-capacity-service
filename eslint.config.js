@@ -1,6 +1,44 @@
 import stylistic from '@stylistic/eslint-plugin';
 import tseslint from 'typescript-eslint';
 
+const declarations = [
+  'const',
+  'let',
+  { selector: 'ExportNamedDeclaration[declaration.type="VariableDeclaration"][declaration.kind=/^(const|let)$/]' },
+];
+// Stylistic's brace-style rule does not check the closing do...while keyword.
+const doWhileSpacing = {
+  meta: {
+    type: 'layout',
+    schema: [],
+    fixable: 'whitespace',
+    messages: { unexpectedBlankLine: 'Do not insert blank lines before while in do...while.' },
+  },
+  create(context) {
+    const sourceCode = context.sourceCode;
+
+    return {
+      DoWhileStatement(node) {
+        if (node.body.type !== 'BlockStatement') return;
+
+        const close = sourceCode.getLastToken(node.body);
+        const keyword = sourceCode.getTokenAfter(node.body);
+        const gap = sourceCode.text.slice(close.range[1], keyword.range[0]);
+
+        if (!/\n[ \t]*\n/u.test(gap)) return;
+
+        context.report({
+          node: keyword,
+          messageId: 'unexpectedBlankLine',
+          fix(fixer) {
+            return fixer.replaceTextRange([close.range[1], keyword.range[0]], gap.replace(/\n[ \t]*(?=\n)/gu, ''));
+          },
+        });
+      },
+    };
+  },
+};
+
 export default tseslint.config(
   {
     ignores: [
@@ -24,7 +62,10 @@ export default tseslint.config(
     languageOptions: {
       parserOptions: { experimentalDecorators: true, ecmaFeatures: { jsx: true } },
     },
-    plugins: { '@stylistic': stylistic },
+    plugins: {
+      '@stylistic': stylistic,
+      layout: { rules: { 'do-while-spacing': doWhileSpacing } },
+    },
     rules: {
       '@typescript-eslint/no-explicit-any': 'error',
       '@stylistic/indent': ['error', 2, { SwitchCase: 1 }],
@@ -42,6 +83,9 @@ export default tseslint.config(
       '@stylistic/space-infix-ops': 'error',
       '@stylistic/arrow-spacing': 'error',
       '@stylistic/space-before-blocks': 'error',
+      '@stylistic/brace-style': ['error', '1tbs', { allowSingleLine: true }],
+      '@stylistic/padded-blocks': ['error', 'never'],
+      'layout/do-while-spacing': 'error',
       '@stylistic/function-call-argument-newline': ['error', 'consistent'],
       '@stylistic/lines-between-class-members': ['error', 'always'],
       '@stylistic/padding-line-between-statements': [
@@ -49,6 +93,9 @@ export default tseslint.config(
         { blankLine: 'always', prev: '*', next: 'return' },
         { blankLine: 'always', prev: 'import', next: '*' },
         { blankLine: 'any', prev: 'import', next: 'import' },
+        { blankLine: 'always', prev: declarations, next: '*' },
+        { blankLine: 'never', prev: declarations, next: declarations },
+        { blankLine: 'always', prev: ['if', 'for', 'while', 'do', 'switch', 'try'], next: '*' },
       ],
       '@stylistic/max-len': ['error', { code: 150, tabWidth: 2 }],
       '@stylistic/no-trailing-spaces': 'error',

@@ -15,6 +15,7 @@ export async function paginate<T>(
   ) {
     throw new RangeError('Invalid pagination');
   }
+
   const [data, total] = await Promise.all([read((page - 1) * perPage, perPage), count()]);
   const lastPage = Math.max(1, Math.ceil(total / perPage));
 

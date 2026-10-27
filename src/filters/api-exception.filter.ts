@@ -30,13 +30,18 @@ export class ApiExceptionFilter implements ExceptionFilter {
     let status = exception instanceof HttpException ? exception.getStatus() : 500;
     let message = defaults[status] ?? `${status}000: Request failed`;
     let details: unknown;
+
     if (exception instanceof HttpException) {
       const response = exception.getResponse();
+
       if (typeof response === 'string') message = response;
       else {
         const body = response as { message?: unknown; details?: unknown };
+
         if (typeof body.message === 'string') message = body.message;
+
         if (Array.isArray(body.message)) details = body.message;
+
         if (body.details !== undefined) details = body.details;
       }
     } else if (isTransientDatabaseError(exception)) {
@@ -62,8 +67,10 @@ export class ApiExceptionFilter implements ExceptionFilter {
       message = status >= 500 ? defaults[status] : ERRORS.PRISMA_API_ERROR;
       if (status < 500) details = exception.code;
     }
+
     if (status >= 500 && !(exception instanceof AppError)) {
       const request = host.switchToHttp().getRequest<{ id?: string; method?: string }>();
+
       this.logger.error({
         ...databaseErrorContext(exception),
         requestId: request.id,
@@ -73,6 +80,7 @@ export class ApiExceptionFilter implements ExceptionFilter {
       message = defaults[status] ?? ERRORS.INTERNAL_SERVER_ERROR;
       details = undefined;
     }
+
     const match = /^(\d+):\s*(.*)$/.exec(message);
     const code = match
       ? Number(match[1])
