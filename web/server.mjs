@@ -19,17 +19,20 @@ export function createWebServer({
     '.woff2': 'font/woff2',
     '.ico': 'image/x-icon',
   };
+
   return createServer(async (req, res) => {
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('Referrer-Policy', 'same-origin');
     res.setHeader(
       'Content-Security-Policy',
-      "default-src 'self'; img-src 'self' blob: data:; style-src 'self' 'unsafe-inline'; script-src 'self'; font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'",
+      "default-src 'self'; img-src 'self' blob: data:; style-src 'self' 'unsafe-inline'; script-src 'self'; " +
+      "font-src 'self'; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'",
     );
     try {
       if (!req.url.startsWith('/') || req.url.startsWith('//')) {
         res.writeHead(400);
         res.end();
+
         return;
       }
       const url = new URL(req.url, 'http://web');
@@ -79,17 +82,20 @@ export function createWebServer({
           if (!res.writableFinished) proxy.destroy();
         });
         req.pipe(proxy);
+
         return;
       }
       if (!['GET', 'HEAD'].includes(req.method)) {
         res.writeHead(405);
         res.end();
+
         return;
       }
       const file = resolve(root, '.' + decodeURIComponent(path));
       if (file !== root && !file.startsWith(root + sep)) {
         res.writeHead(404);
         res.end();
+
         return;
       }
       let selected = file;
@@ -105,6 +111,7 @@ export function createWebServer({
         ) {
           res.writeHead(404);
           res.end();
+
           return;
         }
         selected = resolve(root, 'index.html');

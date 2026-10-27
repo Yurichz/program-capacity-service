@@ -181,6 +181,7 @@ export function Overview(workspace: Workspace) {
       style: 'orange',
     },
   ];
+
   return (
     <>
       <section className="welcome-banner">
@@ -379,6 +380,7 @@ export function Reservations({ program, revision, reserve, details, user }: Work
       setQuery(search);
       setPage(1);
     }, 300);
+
     return () => clearTimeout(timer);
   }, [search]);
   useEffect(() => {
@@ -395,6 +397,7 @@ export function Reservations({ program, revision, reserve, details, user }: Work
     `${base(program.programId)}/reservations?${params}`,
     revision,
   );
+
   return (
     <>
       <SyncNotice program={program} />
@@ -489,6 +492,7 @@ export function Activity({ program, revision }: Workspace) {
     `${base(program.programId)}/movements?page=${page}&perPage=10`,
     revision,
   );
+
   return (
     <Panel
       title="Program movements"
@@ -585,6 +589,7 @@ export function ReserveDialog({
       if (minor(amount, currency) <= 0n) throw new Error('Enter an amount greater than zero.');
     } catch (failure) {
       setError(failure instanceof Error ? failure.message : 'Enter a valid amount.');
+
       return;
     }
     setBusy(true);
@@ -607,6 +612,7 @@ export function ReserveDialog({
       setBusy(false);
     }
   }
+
   return (
     <Dialog
       title="New reservation"
@@ -715,8 +721,7 @@ export function ReservationDetails({
       setRow((previous) =>
         previous.status !== 'ACTIVE' && current.data!.status === 'ACTIVE'
           ? previous
-          : current.data!,
-      );
+          : current.data!);
   }, [current.data]);
   async function release() {
     setBusy(true);
@@ -737,6 +742,7 @@ export function ReservationDetails({
       setBusy(false);
     }
   }
+
   return (
     <Dialog
       title="Reservation details"
@@ -861,6 +867,7 @@ export function Treasury({ program, revision, refresh, notify, captures, capture
     setError(null);
     const saved = sessionStorage.getItem(`capacity.event.${id}`);
     setLast(saved ? JSON.parse(saved) : null);
+
     return () => {
       mounted.current = false;
     };
@@ -882,6 +889,7 @@ export function Treasury({ program, revision, refresh, notify, captures, capture
         void events.reload();
         void view.reload();
         if (code === 'APPLIED') notify('Treasury event applied and confirmed in PostgreSQL.');
+
         return;
       }
       await new Promise((resolve) => setTimeout(resolve, 500));
@@ -906,16 +914,19 @@ export function Treasury({ program, revision, refresh, notify, captures, capture
     try {
       if (kind === 'check' && last) {
         await check(last);
+
         return;
       }
       if (kind === 'retry' && last) {
         await publish(last);
+
         return;
       }
       const current = await freshView();
       if (kind === 'capture') {
         capture(id, current);
         notify(`Snapshot captured at state version ${current.stateVersion}.`);
+
         return;
       }
       if (!config.data) throw new ApiError(503, 'Local demo tools are unavailable.');
@@ -940,19 +951,18 @@ export function Treasury({ program, revision, refresh, notify, captures, capture
           kind === 'limit'
             ? { currency: current.currency, limit }
             : {
-                currency: selected.currency,
-                limit: selected.limit,
-                baseStateVersion: selected.stateVersion,
-                reservations: selected.reservations,
-              },
+              currency: selected.currency,
+              limit: selected.limit,
+              baseStateVersion: selected.stateVersion,
+              reservations: selected.reservations,
+            },
       };
       await publish(envelope);
     } catch (failure) {
       if (mounted.current) {
         setError(failure);
         setOutcome((previous) =>
-          previous === 'Publishing' ? 'Outcome unknown · retry exact event' : previous,
-        );
+          previous === 'Publishing' ? 'Outcome unknown · retry exact event' : previous);
       }
     } finally {
       if (mounted.current) setBusy(false);
@@ -971,6 +981,7 @@ export function Treasury({ program, revision, refresh, notify, captures, capture
     link.click();
     URL.revokeObjectURL(href);
   }
+
   return (
     <>
       <div className="treasury-status-bar">

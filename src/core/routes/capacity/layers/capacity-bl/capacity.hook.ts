@@ -17,6 +17,7 @@ export class ProgramListHook implements SubjectHook {
 @Injectable()
 export class CapacitySubjectHook implements SubjectHook {
   constructor(private readonly capacity: CapacityRepository) {}
+
   async run(request: AuthorizableRequest) {
     if (!request.user) return undefined;
     const programId = request.params.programId;
@@ -36,6 +37,7 @@ export class CapacitySubjectHook implements SubjectHook {
       !(await this.capacity.readReservation(request.user.tenantId, programId, reservationId))
     )
       return undefined;
+
     return { id: program.id, tenantId: program.tenantId };
   }
 }

@@ -36,6 +36,7 @@ import { randomUUID } from 'node:crypto';
         genReqId: (_request, response) => {
           const id = randomUUID();
           response.setHeader('X-Request-Id', id);
+
           return id;
         },
         customProps: (request) => {
@@ -44,6 +45,7 @@ import { randomUUID } from 'node:crypto';
               request.url ?? '',
             );
           const correlation = request.headers['x-correlation-id'];
+
           return {
             requestId: request.id,
             operationId: request.id,

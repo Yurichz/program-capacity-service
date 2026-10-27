@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { minor, money, utilization } from '../src/money.ts';
+
 test('UI money retains large strings, scales, signed movements and bounded visual ratios', () => {
   assert.equal(minor('90071992547409.93', 'USD'), 9007199254740993n);
   assert.equal(money('90071992547409.93', 'USD', true), 'USD 90,071,992,547,409.93');

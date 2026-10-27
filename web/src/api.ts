@@ -9,6 +9,7 @@ export class ApiError extends Error {
   ) {
     super(message);
   }
+
   get uncertain() {
     return this.status === 0 || this.status >= 500;
   }
@@ -67,6 +68,7 @@ async function raw<T>(path: string, init: RequestInit = {}): Promise<Result<T>> 
     !Object.hasOwn(value, 'data')
   )
     throw new ApiError(503, 'The service returned an unreadable response. Retry the same request.');
+
   return value;
 }
 export async function refreshSession() {
@@ -93,6 +95,7 @@ export async function refreshSession() {
     })().finally(() => {
       rotation = null;
     });
+
   return rotation;
 }
 export async function api<T>(path: string, init: RequestInit = {}): Promise<Result<T>> {
@@ -161,6 +164,7 @@ export async function command<T>(path: string, body: object) {
       headers: { 'Idempotency-Key': key },
     });
     finish();
+
     return result;
   } catch (error) {
     if (error instanceof ApiError && !error.uncertain) finish();
@@ -179,5 +183,6 @@ export function message(error: unknown): string {
         .flatMap((value) => (typeof value === 'object' ? Object.values(value ?? {}) : value))
         .join(' · ') || error.message
     );
+
   return error.message;
 }

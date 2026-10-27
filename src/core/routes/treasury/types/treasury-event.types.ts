@@ -8,6 +8,7 @@ import {
   uuid,
   versionSchema,
 } from '#helpers/capacity.helpers.js';
+
 const fxSchema = z
   .object({
     rate: z.string().max(40),

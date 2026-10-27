@@ -20,6 +20,7 @@ import { TreasuryEventListQueryDto } from '#core/routes/capacity/dto/list-query.
 @Controller('internal/programs/:programId')
 export class TreasuryController {
   constructor(private readonly service: TreasuryService) {}
+
   @Get('treasury-events')
   @Serialize(TreasuryEventEntity)
   @ApiDefaultResponse(TreasuryEventEntity, { array: true, paginated: true })
@@ -31,6 +32,7 @@ export class TreasuryController {
   ) {
     return this.service.events(principalFor(user), params.programId, query);
   }
+
   @Get('reconciliation-view')
   @Serialize(ReconciliationViewEntity)
   @ApiDefaultResponse(ReconciliationViewEntity)

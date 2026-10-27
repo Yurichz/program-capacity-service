@@ -12,6 +12,7 @@ export function IsInvoiceAmount() {
         if (typeof value !== 'string' || !currency.success) return false;
         try {
           parseMoney(value, currency.data);
+
           return true;
         } catch {
           return false;

@@ -18,6 +18,7 @@ export class AbilityFactory {
     for (const role of user.roles) this.permissions[role]?.(context);
     if (this.options.superuserRole && user.roles.includes(this.options.superuserRole))
       builder.can(Actions.manage, 'all');
+
     return builder.build({
       detectSubjectType: (resource) =>
         Reflect.get(resource, '__caslSubjectType__') ?? resource.constructor,

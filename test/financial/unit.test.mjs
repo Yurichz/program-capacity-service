@@ -12,6 +12,7 @@ import {
 } from '../../dist/helpers/capacity.helpers.js';
 import { validateEnvironment } from '../../dist/config/environment.config.js';
 import { eventSchema } from '../../dist/core/routes/treasury/types/treasury-event.types.js';
+
 describe('money, FX, schemas and canonical fingerprints', () => {
   test.each([
     ['JPY', '123', 123n],

@@ -16,6 +16,7 @@ export class AuthService {
     private readonly passwords: PasswordService,
     private readonly tokens: TokenService,
   ) {}
+
   async signUp(input: SignUpDto) {
     return this.users.createAccount({
       email: input.email,
@@ -24,6 +25,7 @@ export class AuthService {
       passwordHash: await this.passwords.hash(input.password),
     });
   }
+
   async signIn(input: SignInDto) {
     const user = await this.users.findCredentials(input.email);
     if (!user || !(await this.passwords.compare(input.password, user.passwordHash)))
@@ -36,8 +38,10 @@ export class AuthService {
       refreshTokenHash: this.tokens.hashRefresh(pair.refreshToken),
       expiresAt: this.tokens.refreshExpiresAt(),
     });
+
     return pair;
   }
+
   async refresh(refreshToken: string) {
     const claims = await this.tokens.verify(refreshToken, 'refresh');
     const pair = await this.tokens.issue(Number(claims.sub), claims.sid);
@@ -49,8 +53,10 @@ export class AuthService {
       this.tokens.refreshExpiresAt(),
     );
     if (!rotated) throw new UnauthorizedException();
+
     return pair;
   }
+
   async logout(userId: number, sessionId: string) {
     await this.sessions.revoke(sessionId, userId);
   }

@@ -13,6 +13,7 @@ import {
 } from '#helpers/capacity.helpers.js';
 import { ApiResult } from '#interfaces/api-result.js';
 import type { ListQueryDto, ReservationListQueryDto } from '../../dto/list-query.dto.js';
+
 @Injectable()
 export class CapacityService {
   constructor(
@@ -20,6 +21,7 @@ export class CapacityService {
     readonly health: ConsumerHealth,
     private readonly commands: CapacityClService,
   ) {}
+
   async access(
     principal: Principal,
     id: string,
@@ -29,14 +31,19 @@ export class CapacityService {
     if (!p) return fail(404, 'NOT_FOUND', 'Program not found');
     if (!principal.permissions.includes(permission))
       return fail(403, 'FORBIDDEN', 'Permission required');
+
     return p;
   }
+
   async capacity(principal: Principal, id: string) {
     const p = await this.access(principal, id, 'capacity:read');
+
     return this.capacityData(p);
   }
+
   private capacityData(p: Program & { _count: { reservations: number } }) {
     const currency = currencySchema.parse(p.currency);
+
     return {
       programId: p.id,
       currency,
@@ -60,10 +67,12 @@ export class CapacityService {
       lastAppliedTreasuryAt: p.lastTreasuryAt?.toISOString() ?? null,
     };
   }
+
   async programs(principal: Principal, query: ListQueryDto) {
     if (!principal.permissions.includes('capacity:read'))
       return fail(403, 'FORBIDDEN', 'Permission required');
     const result = await this.repository.programs(principal.tenantId, query);
+
     return new ApiResult(
       result.data.map((p) => ({
         ...this.capacityData(p),
@@ -72,20 +81,24 @@ export class CapacityService {
       result.meta,
     );
   }
+
   async reservations(principal: Principal, id: string, query: ReservationListQueryDto) {
     const p = await this.access(principal, id, 'capacity:read');
     const result = await this.repository.reservations(principal.tenantId, id, query);
+
     return new ApiResult(
       result.data.map((r) => reservationDto(r, currencySchema.parse(p.currency))),
       result.meta,
     );
   }
+
   async movements(principal: Principal, id: string, query: ListQueryDto) {
     const p = await this.access(principal, id, 'capacity:read');
     const currency = currencySchema.parse(p.currency);
     const result = await this.repository.movements(principal.tenantId, id, query);
     const money = (value: bigint) =>
       value < 0n ? `-${formatMoney(-value, currency)}` : formatMoney(value, currency);
+
     return new ApiResult(
       result.data.map((r) => ({
         id: r.id,
@@ -101,18 +114,23 @@ export class CapacityService {
       result.meta,
     );
   }
+
   async reservation(principal: Principal, id: string, reservationId: string) {
     const p = await this.access(principal, id, 'capacity:read');
     const r = await this.repository.readReservation(principal.tenantId, id, reservationId);
     if (!r) return fail(404, 'NOT_FOUND', 'Reservation not found');
+
     return reservationDto(r, currencySchema.parse(p.currency));
   }
+
   reserve(...args: Parameters<CapacityClService['reserve']>) {
     return this.commands.reserve(...args);
   }
+
   release(...args: Parameters<CapacityClService['release']>) {
     return this.commands.release(...args);
   }
+
   view(...args: Parameters<CapacityClService['view']>) {
     return this.commands.view(...args);
   }

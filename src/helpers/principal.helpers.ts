@@ -9,6 +9,7 @@ export function permissionsForRoles(roles: string[]): string[] {
     permissions.add('reservations:write');
   if (roles.some((role) => ['TREASURY', 'APP_ADMIN'].includes(role)))
     permissions.add('treasury:reconcile');
+
   return [...permissions];
 }
 export function principalFor(user: AuthorizableUser): Principal {

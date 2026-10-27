@@ -14,6 +14,7 @@ export const PRISMA_CLIENT_OVERRIDE = Symbol('prisma-client-override');
 @Injectable()
 export class PrismaService implements OnModuleDestroy {
   readonly root: PrismaClient;
+
   private readonly storage = new AsyncLocalStorage<Prisma.TransactionClient>();
 
   constructor(
@@ -34,6 +35,7 @@ export class PrismaService implements OnModuleDestroy {
   get client(): Prisma.TransactionClient {
     return this.storage.getStore() ?? this.root;
   }
+
   get currentTransaction(): Prisma.TransactionClient | undefined {
     return this.storage.getStore();
   }
@@ -44,6 +46,7 @@ export class PrismaService implements OnModuleDestroy {
   ): Promise<T> {
     if (this.currentTransaction)
       throw new Error('Nested $tx is not supported; use $txe to reuse the active transaction');
+
     return this.root.$transaction((client) => this.storage.run(client, () => fn(client)), options);
   }
 
@@ -53,6 +56,7 @@ export class PrismaService implements OnModuleDestroy {
     options?: TxOptions,
   ): Promise<T> {
     const active = client ?? this.currentTransaction;
+
     return active ? this.storage.run(active, () => fn(active)) : this.$tx(fn, options);
   }
 

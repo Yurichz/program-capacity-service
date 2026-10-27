@@ -8,9 +8,11 @@ export class SessionRepository extends TxScopeRepository<Prisma.TransactionClien
   constructor(prisma: PrismaService) {
     super(prisma, (client) => client.session);
   }
+
   createSession(input: { id: string; userId: number; refreshTokenHash: string; expiresAt: Date }) {
     return this.$.create({ data: input });
   }
+
   findActive(id: string, userId: number) {
     return this.$.findFirst({
       where: { id, userId, revokedAt: null, expiresAt: { gt: new Date() } },
@@ -30,6 +32,7 @@ export class SessionRepository extends TxScopeRepository<Prisma.TransactionClien
       },
     });
   }
+
   async rotate(
     id: string,
     userId: number,
@@ -47,8 +50,10 @@ export class SessionRepository extends TxScopeRepository<Prisma.TransactionClien
       },
       data: { refreshTokenHash: nextHash, expiresAt },
     });
+
     return result.count === 1;
   }
+
   revoke(id: string, userId: number) {
     return this.$.updateMany({
       where: { id, userId, revokedAt: null },

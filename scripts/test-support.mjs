@@ -13,6 +13,7 @@ export function testDatabaseUrl(url) {
     /^\/app_test_[a-z0-9_]+$/,
     'Only an owned app_test_* database is allowed',
   );
+
   return url;
 }
 

@@ -24,6 +24,7 @@ export class ResponseInterceptor implements NestInterceptor {
       targets,
     );
     const skip = this.reflector.getAllAndOverride<boolean>(SKIP_ENVELOPE, targets);
+
     return next.handle().pipe(
       map((value: unknown) => {
         if (context.switchToHttp().getResponse().statusCode === 204) return undefined;
@@ -34,6 +35,7 @@ export class ResponseInterceptor implements NestInterceptor {
           entity && data !== null && typeof data === 'object'
             ? instanceToPlain(plainToInstance(entity, data, { excludeExtraneousValues: true }))
             : data;
+
         return { success: true, data: serialized, ...(result.meta ? { meta: result.meta } : {}) };
       }),
     );

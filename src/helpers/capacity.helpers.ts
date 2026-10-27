@@ -60,11 +60,13 @@ export function parseMoney(value: string, currency: Currency, allowZero = false)
     BigInt(fraction.padEnd(scales[currency], '0') || '0');
   if (result > MAX_MINOR || result < (allowZero ? 0n : 1n))
     return fail(400, 'INVALID_AMOUNT', 'Amount outside supported range');
+
   return result;
 }
 export function formatMoney(value: bigint, currency: Currency): string {
   const scale = scales[currency];
   const s = value.toString().padStart(scale + 1, '0');
+
   return scale ? `${s.slice(0, -scale)}.${s.slice(-scale)}` : s;
 }
 Decimal.set({ precision: 80 });
@@ -81,6 +83,7 @@ export function convert(amount: bigint, from: Currency, to: Currency, rate: stri
   );
   if (result < 1n || result > MAX_MINOR)
     return fail(400, 'AMOUNT_OVERFLOW', 'Converted amount outside supported range');
+
   return result;
 }
 export function canonical(value: unknown): string {
@@ -90,6 +93,7 @@ export function canonical(value: unknown): string {
       .sort(([a], [b]) => a.localeCompare(b))
       .map(([k, v]) => `${JSON.stringify(k)}:${canonical(v)}`)
       .join(',')}}`;
+
   return JSON.stringify(value);
 }
 export function fingerprint(value: unknown): string {

@@ -1,5 +1,6 @@
 import type { Reservation } from '#generated/prisma/client.js';
 import { type Currency, currencySchema, formatMoney } from '#helpers/capacity.helpers.js';
+
 export function reservationDto(r: Reservation, currency: Currency): Record<string, unknown> {
   return {
     id: r.id,

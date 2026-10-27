@@ -53,6 +53,7 @@ export async function checkArchitecture(projectPath) {
       };
       visit(node);
     }
+
     return result;
   };
   for (const [file, source] of files) {
@@ -207,6 +208,7 @@ export async function checkArchitecture(projectPath) {
         cycleKeys.add(key);
         report(file, files.get(file), `Runtime import cycle: ${cycle.map(slash).join(' -> ')}`);
       }
+
       return;
     }
     visiting.add(file);
@@ -217,6 +219,7 @@ export async function checkArchitecture(projectPath) {
     finished.add(file);
   }
   for (const file of files.keys()) visit(file);
+
   return { ok: problems.length === 0, files: files.size, problems };
 }
 

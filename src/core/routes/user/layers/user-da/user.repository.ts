@@ -28,17 +28,22 @@ export class UserRepository extends TxScopeRepository<Prisma.TransactionClient['
       throw error;
     }
   }
+
   findCredentials(email: string) {
     return this.$.findUnique({ where: { email } });
   }
+
   findById(id: number) {
     return this.$.findUnique({ where: { id } });
   }
+
   async findByIdOrThrow(id: number) {
     const user = await this.findById(id);
     if (!user) throw new NotFoundException(ERRORS.USER_NOT_FOUND);
+
     return user;
   }
+
   updateProfile(id: number, input: UpdateUserDto) {
     return this.$.update({
       where: { id },

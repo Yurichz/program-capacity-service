@@ -7,6 +7,7 @@ import { ConsumerHealth } from './consumer-health.provider.js';
 import { KafkaStateModule } from './kafka-state.module.js';
 import { TreasuryConsumer } from './treasury-consumer.provider.js';
 import type { Environment } from '#config/environment.config.js';
+
 @Module({
   imports: [TreasuryBlModule, KafkaStateModule],
   providers: [

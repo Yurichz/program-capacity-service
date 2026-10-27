@@ -54,6 +54,7 @@ export async function token(
       refreshTokenHash: tokens.hashRefresh(pair.refreshToken),
       expiresAt: tokens.refreshExpiresAt(),
     });
+
     return pair.accessToken;
   } finally {
     await db.$disconnect();

@@ -14,6 +14,7 @@ export async function createApplication(rootModule: Type<unknown> = AppModule) {
   const app = await NestFactory.create<NestExpressApplication>(rootModule, {
     logger: ['error', 'warn', 'log'],
   });
+
   return configureApplication(app);
 }
 
@@ -57,5 +58,6 @@ export function configureApplication(app: NestExpressApplication) {
       .build(),
   );
   SwaggerModule.setup('docs', app, document);
+
   return app;
 }

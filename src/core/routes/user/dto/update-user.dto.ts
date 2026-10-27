@@ -7,6 +7,7 @@ export class UpdateUserDto {
   @IsString()
   @MaxLength(256)
   firstName?: string | null;
+
   @ApiPropertyOptional({ type: String, nullable: true })
   @IsOptional()
   @IsString()

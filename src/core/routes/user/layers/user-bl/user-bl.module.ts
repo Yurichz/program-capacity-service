@@ -5,6 +5,7 @@ import { userPermissions } from './user.permissions.js';
 import { UserSubjectHook } from './user.hook.js';
 import { UserController } from './user.controller.js';
 import { UserService } from './user.service.js';
+
 @Module({
   imports: [UserDaModule, CaslModule.forFeature({ permissions: userPermissions })],
   controllers: [UserController],

@@ -8,19 +8,23 @@ import type { Tx } from '#core/providers/prisma/financial-transaction.service.js
 import type { Currency, Principal, Outcome } from '#helpers/capacity.helpers.js';
 import { paginate } from '#helpers/paginate.js';
 import type { ListQueryDto, ReservationListQueryDto } from '../../dto/list-query.dto.js';
+
 @Injectable()
 export class CapacityRepository extends TxScopeRepository<Prisma.TransactionClient['program']> {
   constructor(prisma: PrismaService) {
     super(prisma, (client) => client.program);
   }
+
   find(tenantId: string, id: string) {
     return this.$.findUnique({
       where: { tenantId_id: { tenantId, id } },
       include: { _count: { select: { reservations: { where: { status: 'ACTIVE' } } } } },
     });
   }
+
   programs(tenantId: string, query: ListQueryDto) {
     const where = { tenantId };
+
     return paginate(
       (skip, take) =>
         this.$.findMany({
@@ -35,6 +39,7 @@ export class CapacityRepository extends TxScopeRepository<Prisma.TransactionClie
       query.perPage,
     );
   }
+
   reservations(tenantId: string, programId: string, query: ReservationListQueryDto) {
     const where: Prisma.ReservationWhereInput = {
       tenantId,
@@ -43,6 +48,7 @@ export class CapacityRepository extends TxScopeRepository<Prisma.TransactionClie
       ...(query.currency ? { invoiceCurrency: query.currency } : {}),
       ...(query.invoiceId ? { invoiceId: { contains: query.invoiceId, mode: 'insensitive' } } : {}),
     };
+
     return paginate(
       (skip, take) =>
         this.client.reservation.findMany({
@@ -56,8 +62,10 @@ export class CapacityRepository extends TxScopeRepository<Prisma.TransactionClie
       query.perPage,
     );
   }
+
   movements(tenantId: string, programId: string, query: ListQueryDto) {
     const where = { tenantId, programId };
+
     return paginate(
       (skip, take) =>
         this.client.capacityMovement.findMany({
@@ -71,13 +79,16 @@ export class CapacityRepository extends TxScopeRepository<Prisma.TransactionClie
       query.perPage,
     );
   }
+
   async lock(tx: Tx, tenantId: string, id: string): Promise<Program | null> {
     const rows = await tx.$queryRaw<
       unknown[]
     >`SELECT "id" FROM "Program" WHERE "tenantId" = ${tenantId} AND "id" = ${id}::uuid FOR UPDATE`;
     z.array(z.object({ id: z.string().uuid() })).parse(rows);
+
     return tx.program.findUnique({ where: { tenantId_id: { tenantId, id } } });
   }
+
   async movement(
     tx: Tx,
     p: Program,
@@ -103,6 +114,7 @@ export class CapacityRepository extends TxScopeRepository<Prisma.TransactionClie
       },
     });
   }
+
   async saved(principal: Principal, key: string) {
     return this.client.idempotencyRequest.findUnique({
       where: {
@@ -110,6 +122,7 @@ export class CapacityRepository extends TxScopeRepository<Prisma.TransactionClie
       },
     });
   }
+
   async claim(
     tx: Tx,
     principal: Principal,
@@ -120,6 +133,7 @@ export class CapacityRepository extends TxScopeRepository<Prisma.TransactionClie
     await tx.$executeRaw`INSERT INTO "IdempotencyRequest" ("tenantId", "clientId", "key", "programId", "fingerprint")
       VALUES (${principal.tenantId}, ${principal.clientId}, ${key}, ${programId}::uuid, ${hash}) ON CONFLICT DO NOTHING`;
   }
+
   request(tx: Tx, principal: Principal, key: string) {
     return tx.idempotencyRequest.findUniqueOrThrow({
       where: {
@@ -127,6 +141,7 @@ export class CapacityRepository extends TxScopeRepository<Prisma.TransactionClie
       },
     });
   }
+
   async saveResult(tx: Tx, principal: Principal, key: string, result: Outcome) {
     await tx.idempotencyRequest.update({
       where: {
@@ -135,6 +150,7 @@ export class CapacityRepository extends TxScopeRepository<Prisma.TransactionClie
       data: { status: result.status, result: result.body as Prisma.InputJsonObject },
     });
   }
+
   updateProgram(
     tx: Tx,
     program: Pick<Program, 'id' | 'tenantId'>,
@@ -145,27 +161,34 @@ export class CapacityRepository extends TxScopeRepository<Prisma.TransactionClie
       data,
     });
   }
+
   invoice(tx: Tx, tenantId: string, invoiceId: string) {
     return tx.reservation.findUnique({ where: { tenantId_invoiceId: { tenantId, invoiceId } } });
   }
+
   activeCount(tx: Tx, tenantId: string, programId: string) {
     return tx.reservation.count({ where: { tenantId, programId, status: 'ACTIVE' } });
   }
+
   reservation(tx: Tx, tenantId: string, programId: string, id: string) {
     return tx.reservation.findFirst({ where: { tenantId, programId, id } });
   }
+
   readReservation(tenantId: string, programId: string, id: string) {
     return this.client.reservation.findFirst({ where: { tenantId, programId, id } });
   }
+
   created(tx: Tx, scope: { id: string; tenantId: string; programId: string }) {
     return tx.reservation.findUniqueOrThrow({ where: scope });
   }
+
   close(tx: Tx, scope: { id: string; tenantId: string; programId: string }) {
     return tx.reservation.update({
       where: { ...scope, status: 'ACTIVE' },
       data: { status: 'RELEASED', closedAt: new Date() },
     });
   }
+
   insert(
     tx: Tx,
     r: {
@@ -182,9 +205,15 @@ export class CapacityRepository extends TxScopeRepository<Prisma.TransactionClie
       fxAsOf: Date;
     },
   ) {
-    return tx.$executeRaw`INSERT INTO "Reservation" ("id","tenantId","programId","invoiceId","invoiceMinor","invoiceCurrency","reservedMinor","fxRate","fxDirection","fxSource","fxAsOf")
-      VALUES (${r.id}::uuid,${r.tenantId},${r.programId}::uuid,${r.invoiceId},${r.invoiceMinor},${r.invoiceCurrency},${r.reservedMinor},${r.fxRate}::numeric,${r.fxDirection},${r.fxSource},${r.fxAsOf}) ON CONFLICT ("tenantId","invoiceId") DO NOTHING`;
+    return tx.$executeRaw`INSERT INTO "Reservation" (
+        "id","tenantId","programId","invoiceId","invoiceMinor","invoiceCurrency",
+        "reservedMinor","fxRate","fxDirection","fxSource","fxAsOf"
+      ) VALUES (
+        ${r.id}::uuid,${r.tenantId},${r.programId}::uuid,${r.invoiceId},${r.invoiceMinor},${r.invoiceCurrency},
+        ${r.reservedMinor},${r.fxRate}::numeric,${r.fxDirection},${r.fxSource},${r.fxAsOf}
+      ) ON CONFLICT ("tenantId","invoiceId") DO NOTHING`;
   }
+
   async consistentView(tx: Tx, tenantId: string, id: string) {
     await tx.$executeRaw`SET TRANSACTION READ ONLY`;
     const program = await tx.program.findUniqueOrThrow({
@@ -194,6 +223,7 @@ export class CapacityRepository extends TxScopeRepository<Prisma.TransactionClie
       where: { tenantId, programId: id, status: 'ACTIVE' },
       orderBy: { id: 'asc' },
     });
+
     return { program, reservations };
   }
 }

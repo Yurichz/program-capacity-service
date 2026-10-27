@@ -108,7 +108,11 @@ try {
       await app.exec([
         'node',
         '-e',
-        "const fs=require('fs');for(const p of ['src','scripts','node_modules/prisma','node_modules/typescript','node_modules/jest','/usr/local/lib/node_modules/npm','/usr/bin/mount','/usr/bin/umount','/usr/bin/nsenter','/usr/sbin/blkid','/usr/sbin/findfs','/usr/bin/lsblk','/usr/bin/infocmp','/usr/bin/gzip','/usr/lib/systemd/systemd-homed','/usr/share/perl/5.36/Archive/Tar.pm','/usr/lib/x86_64-linux-gnu/perl-base/Archive/Tar.pm'])if(fs.existsSync(p))throw new Error('Unexpected runtime tool: '+p);fs.accessSync('dist/generated/prisma/client.js')",
+        "const fs=require('fs');for(const p of ['src','scripts','node_modules/prisma','node_modules/typescript'," +
+        "'node_modules/jest','/usr/local/lib/node_modules/npm','/usr/bin/mount','/usr/bin/umount','/usr/bin/nsenter'," +
+        "'/usr/sbin/blkid','/usr/sbin/findfs','/usr/bin/lsblk','/usr/bin/infocmp','/usr/bin/gzip','/usr/lib/systemd/systemd-homed'," +
+        "'/usr/share/perl/5.36/Archive/Tar.pm','/usr/lib/x86_64-linux-gnu/perl-base/Archive/Tar.pm'])" +
+        "if(fs.existsSync(p))throw new Error('Unexpected runtime tool: '+p);fs.accessSync('dist/generated/prisma/client.js')",
       ])
     ).exitCode,
     0,

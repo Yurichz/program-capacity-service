@@ -161,13 +161,17 @@ try {
     env,
   );
   const constraints =
-    await db.$queryRaw`SELECT conname FROM pg_constraint WHERE conname IN ('program_amounts','program_currency','reservation_money','reservation_terminal_time','inbox_revision','idempotency_result')`;
+    await db.$queryRaw`SELECT conname FROM pg_constraint WHERE conname IN (
+      'program_amounts','program_currency','reservation_money','reservation_terminal_time','inbox_revision','idempotency_result'
+    )`;
   assert.equal(constraints.length, 6, 'Raw SQL checks must survive migrations');
   const triggers =
-    await db.$queryRaw`SELECT tgname FROM pg_trigger WHERE NOT tgisinternal AND tgname IN ('movement_append_only','reservation_history') AND tgenabled <> 'D'`;
+    await db.$queryRaw`SELECT tgname FROM pg_trigger
+      WHERE NOT tgisinternal AND tgname IN ('movement_append_only','reservation_history') AND tgenabled <> 'D'`;
   assert.equal(triggers.length, 2);
   const fk =
-    await db.$queryRaw`SELECT confupdtype::text AS confupdtype, confdeltype::text AS confdeltype FROM pg_constraint WHERE conname = 'Session_userId_fkey'`;
+    await db.$queryRaw`SELECT confupdtype::text AS confupdtype, confdeltype::text AS confdeltype
+      FROM pg_constraint WHERE conname = 'Session_userId_fkey'`;
   assert.equal(fk[0].confupdtype, 'c');
   assert.equal(fk[0].confdeltype, 'c');
   await assert.rejects(

@@ -198,6 +198,7 @@ export function Loading() {
 export function Pagination({ meta, change }: { meta?: Meta; change: (page: number) => void }) {
   if (!meta) return null;
   const start = meta.total ? (meta.currentPage - 1) * meta.perPage + 1 : 0;
+
   return (
     <div className="pagination">
       <span>
@@ -248,11 +249,13 @@ export function Dialog({
     const previous = document.activeElement as HTMLElement | null;
     ref.current?.showModal();
     ref.current?.querySelector<HTMLElement>('[data-autofocus]')?.focus();
+
     return () => {
       ref.current?.close();
       previous?.focus();
     };
   }, []);
+
   return (
     <dialog
       ref={ref}
@@ -279,10 +282,10 @@ export function Dialog({
 export function date(value: string | null, short = false) {
   return value
     ? new Intl.DateTimeFormat('en-GB', {
-        day: '2-digit',
-        month: 'short',
-        ...(short ? {} : { hour: '2-digit', minute: '2-digit' }),
-      }).format(new Date(value))
+      day: '2-digit',
+      month: 'short',
+      ...(short ? {} : { hour: '2-digit', minute: '2-digit' }),
+    }).format(new Date(value))
     : 'Not yet';
 }
 export function reason(value: string) {

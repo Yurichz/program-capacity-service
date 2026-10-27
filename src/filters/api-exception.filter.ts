@@ -77,6 +77,7 @@ export class ApiExceptionFilter implements ExceptionFilter {
     const code = match
       ? Number(match[1])
       : Number((defaults[status] ?? `${status}000`).split(':')[0]);
+
     return host
       .switchToHttp()
       .getResponse()

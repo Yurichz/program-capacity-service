@@ -118,7 +118,7 @@ Use Node 24.22.1 and a running Docker Engine. Integration, migration, smoke and 
 ```sh
 npm ci
 npm ci --prefix web
-npm run format:check
+npm run lint:fix # Apply automatic style fixes locally; npm run lint only checks.
 npm run lint
 npm --prefix web run lint
 npm run db:generate

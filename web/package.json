@@ -12,6 +12,7 @@
     "build": "npm run typecheck && vite build",
     "start": "node server.mjs",
     "lint": "eslint src server.mjs test vite.config.ts playwright.config.ts",
+    "lint:fix": "npm run lint -- --fix",
     "test": "node --test test/*.test.mjs",
     "test:e2e": "playwright test"
   },

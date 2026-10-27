@@ -17,6 +17,7 @@ export async function paginate<T>(
   }
   const [data, total] = await Promise.all([read((page - 1) * perPage, perPage), count()]);
   const lastPage = Math.max(1, Math.ceil(total / perPage));
+
   return new ApiResult(data, {
     total,
     lastPage,

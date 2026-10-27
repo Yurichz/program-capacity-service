@@ -16,6 +16,7 @@ import { AuthService } from './auth.service.js';
 @Controller('auth')
 export class AuthController {
   constructor(private readonly service: AuthService) {}
+
   @Post('sign-up')
   @SkipAuth()
   @Serialize(UserEntity)
@@ -23,6 +24,7 @@ export class AuthController {
   signUp(@Body() input: SignUpDto) {
     return this.service.signUp(input);
   }
+
   @Post('sign-in')
   @SkipAuth()
   @Serialize(JwtTokensEntity)
@@ -30,6 +32,7 @@ export class AuthController {
   signIn(@Body() input: SignInDto) {
     return this.service.signIn(input);
   }
+
   @Post('token/refresh')
   @SkipAuth()
   @Serialize(JwtTokensEntity)
@@ -37,6 +40,7 @@ export class AuthController {
   refresh(@Body() input: RefreshTokenDto) {
     return this.service.refresh(input.refreshToken);
   }
+
   @Post('logout')
   @ApiBearerAuth()
   @ApiDefaultResponse(undefined, { status: 204 })

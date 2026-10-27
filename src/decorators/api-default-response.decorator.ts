@@ -11,6 +11,7 @@ export function ApiDefaultResponse(
   const item: { $ref: string } | Record<string, never> = entity
     ? { $ref: getSchemaPath(entity) }
     : {};
+
   return applyDecorators(
     ...(entity ? [ApiExtraModels(entity)] : []),
     HttpCode(status),
@@ -24,18 +25,18 @@ export function ApiDefaultResponse(
           data: options.array ? { type: 'array', items: item } : item,
           ...(options.paginated
             ? {
-                meta: {
-                  type: 'object',
-                  properties: {
-                    total: { type: 'integer' },
-                    lastPage: { type: 'integer' },
-                    currentPage: { type: 'integer' },
-                    perPage: { type: 'integer' },
-                    prev: { type: 'integer', nullable: true },
-                    next: { type: 'integer', nullable: true },
-                  },
+              meta: {
+                type: 'object',
+                properties: {
+                  total: { type: 'integer' },
+                  lastPage: { type: 'integer' },
+                  currentPage: { type: 'integer' },
+                  perPage: { type: 'integer' },
+                  prev: { type: 'integer', nullable: true },
+                  next: { type: 'integer', nullable: true },
                 },
-              }
+              },
+            }
             : {}),
         },
       },

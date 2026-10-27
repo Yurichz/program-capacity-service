@@ -27,6 +27,7 @@ import { MovementEntity } from '../../entities/movement.entity.js';
 @Controller('programs')
 export class ProgramsController {
   constructor(private readonly service: CapacityService) {}
+
   @Get()
   @Serialize(ProgramSummaryEntity)
   @ApiDefaultResponse(ProgramSummaryEntity, { array: true, paginated: true })
@@ -44,6 +45,7 @@ function idempotencyKey(key: string): string {
         constraints: { format: 'A 1–128 character idempotency key is required' },
       },
     ]);
+
   return key;
 }
 function respond(result: Outcome, response: Response) {
@@ -55,6 +57,7 @@ function respond(result: Outcome, response: Response) {
       String(result.body.requestId),
     );
   response.status(result.status);
+
   return result.body;
 }
 
@@ -63,6 +66,7 @@ function respond(result: Outcome, response: Response) {
 @Controller('programs/:programId')
 export class CapacityController {
   constructor(private readonly service: CapacityService) {}
+
   @Get('reservations')
   @Serialize(ReservationEntity)
   @ApiDefaultResponse(ReservationEntity, { array: true, paginated: true })
@@ -74,6 +78,7 @@ export class CapacityController {
   ) {
     return this.service.reservations(principalFor(user), params.programId, query);
   }
+
   @Get('movements')
   @Serialize(MovementEntity)
   @ApiDefaultResponse(MovementEntity, { array: true, paginated: true })
@@ -85,6 +90,7 @@ export class CapacityController {
   ) {
     return this.service.movements(principalFor(user), params.programId, query);
   }
+
   @Get('capacity')
   @Serialize(CapacityEntity)
   @ApiDefaultResponse(CapacityEntity)
@@ -92,6 +98,7 @@ export class CapacityController {
   capacity(@CurrentUser() user: AuthorizableUser, @Param() params: ProgramParamsDto) {
     return this.service.capacity(principalFor(user), params.programId);
   }
+
   @Get('reservations/:reservationId')
   @Serialize(ReservationEntity)
   @ApiDefaultResponse(ReservationEntity)
@@ -99,6 +106,7 @@ export class CapacityController {
   reservation(@CurrentUser() user: AuthorizableUser, @Param() params: ReservationParamsDto) {
     return this.service.reservation(principalFor(user), params.programId, params.reservationId);
   }
+
   @Post('reservations')
   @Serialize(ReservationEntity)
   @ApiDefaultResponse(ReservationEntity, { status: 201 })
@@ -123,6 +131,7 @@ export class CapacityController {
       response,
     );
   }
+
   @Post('reservations/:reservationId/release')
   @Serialize(ReservationEntity)
   @ApiDefaultResponse(ReservationEntity)

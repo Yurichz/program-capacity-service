@@ -33,13 +33,32 @@ export class Environment {
   @Min(1)
   REFRESH_TOKEN_TTL_SECONDS = 2592000;
 
-  @IsString() @MinLength(1) JWT_ISSUER = 'capacity-dev';
-  @IsString() @MinLength(1) JWT_AUDIENCE = 'capacity-service';
-  @IsString() @Matches(/^[^\s,]+:\d+(,[^\s,]+:\d+)*$/) KAFKA_BROKERS = 'localhost:19092';
-  @IsString() @MinLength(1) KAFKA_TOPIC = 'treasury.capacity.v1';
-  @IsString() @MinLength(1) KAFKA_GROUP_ID = 'capacity-service-v1';
-  @IsString() @MinLength(1) TREASURY_SOURCE = 'local-treasury';
-  @IsIn(['debug', 'info', 'warn', 'error', 'silent']) LOG_LEVEL = 'info';
+  @IsString()
+  @MinLength(1)
+  JWT_ISSUER = 'capacity-dev';
+
+  @IsString()
+  @MinLength(1)
+  JWT_AUDIENCE = 'capacity-service';
+
+  @IsString()
+  @Matches(/^[^\s,]+:\d+(,[^\s,]+:\d+)*$/)
+  KAFKA_BROKERS = 'localhost:19092';
+
+  @IsString()
+  @MinLength(1)
+  KAFKA_TOPIC = 'treasury.capacity.v1';
+
+  @IsString()
+  @MinLength(1)
+  KAFKA_GROUP_ID = 'capacity-service-v1';
+
+  @IsString()
+  @MinLength(1)
+  TREASURY_SOURCE = 'local-treasury';
+
+  @IsIn(['debug', 'info', 'warn', 'error', 'silent'])
+  LOG_LEVEL = 'info';
 }
 
 export function validateEnvironment(input: Record<string, unknown>): Environment {
@@ -55,5 +74,6 @@ export function validateEnvironment(input: Record<string, unknown>): Environment
     throw new Error(`Invalid environment: ${errors.map((error) => error.property).join(', ')}`);
   if (value.JWT_ACCESS_SECRET === value.JWT_REFRESH_SECRET)
     throw new Error('JWT secrets must differ');
+
   return value;
 }

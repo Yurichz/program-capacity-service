@@ -7,11 +7,17 @@ import { databaseErrorContext } from '#helpers/database-error.helpers.js';
 
 export class TreasuryConsumer {
   readonly consumer: Consumer;
+
   private stopping = false;
+
   private startTask?: Promise<void>;
+
   private lastHeartbeat = 0;
+
   private watchdog?: ReturnType<typeof setInterval>;
+
   private invalidating: Promise<void> = Promise.resolve();
+
   constructor(
     readonly config: Config,
     readonly treasury: TreasuryService,
@@ -24,8 +30,8 @@ export class TreasuryConsumer {
       logLevel: logLevel.ERROR,
       logCreator:
         () =>
-        ({ namespace, log }) =>
-          this.logger.error({ component: 'kafka', namespace }, String(log.message)),
+          ({ namespace, log }) =>
+            this.logger.error({ component: 'kafka', namespace }, String(log.message)),
       retry: { retries: 5, initialRetryTime: 300 },
     }).consumer({
       groupId: config.KAFKA_GROUP_ID,
@@ -57,6 +63,7 @@ export class TreasuryConsumer {
       void this.invalidate();
     });
   }
+
   private async invalidate() {
     this.health.connected = false;
     this.invalidating = this.invalidating
@@ -69,10 +76,13 @@ export class TreasuryConsumer {
       ),
     );
   }
+
   start(): Promise<void> {
     if (this.stopping) return Promise.resolve();
+
     return (this.startTask ??= this.startConsumer());
   }
+
   private async startConsumer(): Promise<void> {
     await this.treasury.requireReconciliation();
     if (this.stopping) return;
@@ -94,6 +104,7 @@ export class TreasuryConsumer {
     }, 1000);
     this.watchdog.unref();
   }
+
   async batch({
     batch,
     heartbeat,
@@ -152,6 +163,7 @@ export class TreasuryConsumer {
       }
     }
   }
+
   async stop() {
     this.stopping = true;
     this.health.connected = false;

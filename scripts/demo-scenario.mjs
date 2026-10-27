@@ -19,6 +19,7 @@ export async function runScenario({ api, token, producer, topic, tenantId, progr
     const result = await response.json();
     assert.ok(response.ok, 'Unexpected HTTP ' + response.status + ': ' + JSON.stringify(result));
     assert.equal(result.success, true);
+
     return result.data;
   }
   const view = () => http('/api/v1/internal/programs/' + programId + '/reconciliation-view');
@@ -44,6 +45,7 @@ export async function runScenario({ api, token, producer, topic, tenantId, progr
       );
       if (rows.length) {
         assert.equal(rows[0].resultCode, expected);
+
         return event;
       }
       await setTimeout(50);
@@ -119,5 +121,6 @@ export async function runScenario({ api, token, producer, topic, tenantId, progr
   assert.equal(final.reserved, before.reserved);
   assert.equal(final.available, before.available);
   console.log('USD/FX releases restored initial availability:', final.available);
+
   return { reservationIds: [first.id, fx.id] };
 }

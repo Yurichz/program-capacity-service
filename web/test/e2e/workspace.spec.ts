@@ -45,6 +45,7 @@ async function reserve(page: Page, invoice: string, amount = '1250.50', currency
   await dialog.getByLabel('Amount', { exact: true }).fill(amount);
   await dialog.getByLabel('Currency', { exact: true }).selectOption(currency);
   await dialog.getByRole('button', { name: 'Create reservation', exact: true }).click();
+
   return page.getByRole('dialog', { name: 'Reservation details', exact: true });
 }
 test('login, real Kafka reconciliation, cross-currency reserve/release and stale snapshot recovery', async ({
@@ -215,8 +216,7 @@ test('refresh survives reload, concurrent expired-token requests rotate once, lo
         success: false,
         error: { code: 403000, message: 'Forbidden' },
       }),
-    }),
-  );
+    }));
   await page.getByRole('button', { name: 'Refresh workspace' }).click();
   await expect(page.getByRole('alert')).toContainText('does not have permission');
   await page.unroute('**/api/v1/programs?*');

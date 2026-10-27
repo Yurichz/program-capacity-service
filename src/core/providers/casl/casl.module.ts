@@ -14,6 +14,7 @@ export class CaslModule {
       exports: [CASL_ROOT_OPTIONS],
     };
   }
+
   static forFeature(options: { permissions: Permissions }): DynamicModule {
     return {
       module: CaslModule,

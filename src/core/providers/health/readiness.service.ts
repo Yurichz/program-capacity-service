@@ -23,6 +23,7 @@ export class ReadinessService {
       throw new ServiceUnavailableException();
     }
     if (this.consumer.stopping || !this.consumer.connected) throw new ServiceUnavailableException();
+
     return { status: 'ready' };
   }
 }

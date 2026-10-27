@@ -21,6 +21,7 @@ async function readPrograms(path: string, signal: AbortSignal): Promise<Result<P
     data.push(...result.data);
     page = result.meta?.next ?? null;
   } while (page !== null);
+
   return { success: true, data };
 }
 
@@ -53,6 +54,7 @@ function Login({ complete }: { complete: (user: User) => void }) {
       setBusy(false);
     }
   }
+
   return (
     <main className="login">
       <section className="login-art">
@@ -175,6 +177,7 @@ function Cabinet({ user, signedOut }: { user: User; signedOut: () => void }) {
   useEffect(() => {
     if (toast) {
       const timer = setTimeout(() => setToast(''), 6000);
+
       return () => clearTimeout(timer);
     }
   }, [toast]);
@@ -183,16 +186,16 @@ function Cabinet({ user, signedOut }: { user: User; signedOut: () => void }) {
   const refresh = () => setRevision((value) => value + 1);
   const workspace: Workspace | null = selected
     ? {
-        program: selected,
-        user,
-        revision,
-        refresh,
-        reserve: () => setCreating(true),
-        details: setDetail,
-        notify: setToast,
-        captures,
-        capture: (id, view) => setCaptures((current) => ({ ...current, [id]: view })),
-      }
+      program: selected,
+      user,
+      revision,
+      refresh,
+      reserve: () => setCreating(true),
+      details: setDetail,
+      notify: setToast,
+      captures,
+      capture: (id, view) => setCaptures((current) => ({ ...current, [id]: view })),
+    }
     : null;
   async function leave() {
     setLoggingOut(true);
@@ -205,6 +208,7 @@ function Cabinet({ user, signedOut }: { user: User; signedOut: () => void }) {
       setLoggingOut(false);
     }
   }
+
   return (
     <div className="app-shell">
       <a className="skip-link" href="#main">
@@ -476,6 +480,7 @@ export function App() {
       setUser(null);
     };
     window.addEventListener('capacity:unauthorized', unauthorized);
+
     return () => window.removeEventListener('capacity:unauthorized', unauthorized);
   }, []);
   if (booting) return <Loading />;
@@ -495,5 +500,6 @@ export function App() {
         />
       </>
     );
+
   return <Cabinet user={user} signedOut={() => setUser(null)} />;
 }

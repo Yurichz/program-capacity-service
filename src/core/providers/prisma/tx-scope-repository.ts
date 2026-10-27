@@ -13,9 +13,11 @@ export abstract class TxScopeRepository<T> {
   get $(): T {
     return this.model(this.explicitClient ?? this.prisma.client);
   }
+
   protected get client(): Prisma.TransactionClient {
     return this.explicitClient ?? this.prisma.client;
   }
+
   readonly paginate = paginate;
 
   tx(client?: Prisma.TransactionClient): this {
@@ -28,9 +30,11 @@ export abstract class TxScopeRepository<T> {
         const value = Reflect.get(object, key, receiver);
         if (typeof value !== 'function') return value;
         if (!cache.has(key)) cache.set(key, value.bind(proxy));
+
         return cache.get(key);
       },
     });
+
     return proxy;
   }
 }

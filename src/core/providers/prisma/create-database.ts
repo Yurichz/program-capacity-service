@@ -1,6 +1,7 @@
 import { ConfigService } from '@nestjs/config';
 import { PrismaClient } from '#generated/prisma/client.js';
 import { PrismaService } from './prisma.service.js';
+
 export { PrismaClient };
 
 /** Operational scripts use the same adapter and client settings as the API. */

@@ -8,6 +8,7 @@ import { TreasuryDaModule } from '../treasury-da/treasury-da.module.js';
 import { TreasuryClModule } from '../treasury-cl/treasury-cl.module.js';
 import { TreasuryService } from './treasury.service.js';
 import { TreasuryController } from './treasury.controller.js';
+
 @Module({
   imports: [
     TreasuryDaModule,

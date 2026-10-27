@@ -44,6 +44,7 @@ export function useResource<T>(
     };
     window.addEventListener('focus', focus);
     document.addEventListener('visibilitychange', focus);
+
     return () => {
       clearInterval(timer);
       window.removeEventListener('focus', focus);
@@ -60,6 +61,7 @@ export function useResource<T>(
       void reload();
     }
   }, [revision, reload]);
+
   return {
     result,
     data: result?.data,

@@ -27,9 +27,11 @@ import {
   type TreasuryResult,
   type Target,
 } from '../../types/treasury-event.types.js';
+
 @Injectable()
 export class TreasuryClService {
   private readonly source: string;
+
   constructor(
     readonly repo: CapacityRepository,
     readonly inbox: TreasuryRepository,
@@ -38,11 +40,13 @@ export class TreasuryClService {
   ) {
     this.source = config.getOrThrow<string>('TREASURY_SOURCE');
   }
+
   async requireReconciliation(): Promise<void> {
     // Single runtime: on startup or loss of consumer readiness, require a new snapshot.
     // Financial state is untouched; updates take PostgreSQL row locks like other writers.
     await this.inbox.requireReconciliation();
   }
+
   private async quarantine(
     tx: Tx,
     c: Coordinates,
@@ -61,8 +65,7 @@ export class TreasuryClService {
       });
     }
     for (const target of [...unique.values()].sort((a, b) =>
-      a.programId.localeCompare(b.programId),
-    )) {
+      a.programId.localeCompare(b.programId))) {
       const p = await this.repo.lock(tx, target.tenantId, target.programId);
       if (p)
         await this.repo.updateProgram(tx, p, {
@@ -73,8 +76,10 @@ export class TreasuryClService {
               : p.highestSeenTreasuryRevision,
         });
     }
+
     return { code: reason };
   }
+
   async process(raw: Buffer, key: string | null, c: Coordinates): Promise<TreasuryResult> {
     let parsed: unknown;
     try {
@@ -86,12 +91,12 @@ export class TreasuryClService {
     const validated = eventSchema.safeParse(parsed);
     const targets: Target[] = validated.success
       ? [
-          {
-            tenantId: validated.data.tenantId,
-            programId: validated.data.programId,
-            revision: BigInt(validated.data.treasuryRevision),
-          },
-        ]
+        {
+          tenantId: validated.data.tenantId,
+          programId: validated.data.programId,
+          revision: BigInt(validated.data.treasuryRevision),
+        },
+      ]
       : candidate.success
         ? [candidate.data]
         : [];
@@ -101,8 +106,7 @@ export class TreasuryClService {
     const revision = BigInt(event.treasuryRevision);
     if (key !== `${event.tenantId}:${event.programId}`)
       return this.transactions.run((tx) =>
-        this.quarantine(tx, c, raw, 'INVALID_PARTITION_KEY', [{ ...event, revision }]),
-      );
+        this.quarantine(tx, c, raw, 'INVALID_PARTITION_KEY', [{ ...event, revision }]));
     const hash = fingerprint(event);
     const revisionHash = fingerprint({
       type: event.type,
@@ -116,6 +120,7 @@ export class TreasuryClService {
       const inbox = await this.inbox.event(tx, event.eventId);
       if (!inserted) {
         if (inbox.fingerprint === hash) return inbox.result as TreasuryResult;
+
         return this.quarantine(tx, c, raw, 'EVENT_ID_CONFLICT', [
           { ...event, revision },
           { tenantId: inbox.tenantId, programId: inbox.programId },
@@ -124,6 +129,7 @@ export class TreasuryClService {
       const finish = async (code: string): Promise<TreasuryResult> => {
         const result = { code };
         await this.inbox.finish(tx, inbox.id, code);
+
         return result;
       };
       let p = await this.repo.lock(tx, event.tenantId, event.programId);
@@ -141,10 +147,12 @@ export class TreasuryClService {
       });
       const reject = async (code: string) => {
         await this.repo.updateProgram(tx, p!, { syncStatus: 'RECONCILIATION_REQUIRED' });
+
         return finish(code);
       };
       if (previous && previous.revisionFingerprint !== revisionHash) {
         await this.quarantine(tx, c, raw, 'REVISION_CONFLICT', []);
+
         return reject('REVISION_CONFLICT');
       }
       if (revision <= p.lastAppliedTreasuryRevision) return finish('STALE');
@@ -175,6 +183,7 @@ export class TreasuryClService {
           this.source,
           event.eventId,
         );
+
         return finish('APPLIED');
       }
       if (revision <= oldHighest) return reject('RECOVERY_REVISION_TOO_LOW');
@@ -204,6 +213,7 @@ export class TreasuryClService {
         });
         if (!count) {
           await this.inbox.rollbackSnapshotRows(tx);
+
           return reject('RESERVATION_CONFLICT');
         }
       }
@@ -230,10 +240,13 @@ export class TreasuryClService {
         this.source,
         event.eventId,
       );
+
       return finish('APPLIED');
     });
+
     return { ...outcome, eventId: event.eventId, programId: event.programId };
   }
+
   private async prepareSnapshot(
     tx: Tx,
     p: Program,
@@ -288,6 +301,7 @@ export class TreasuryClService {
         return 'RESERVATION_CONFLICT';
       rows.push({ input: row, invoiceMinor, held, existing: !!existing });
     }
+
     return { rows, total };
   }
 }

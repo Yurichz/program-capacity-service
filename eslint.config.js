@@ -1,6 +1,60 @@
+import stylistic from '@stylistic/eslint-plugin';
 import tseslint from 'typescript-eslint';
+
 export default tseslint.config(
-  { ignores: ['src/generated/**', 'dist/**'] },
+  {
+    ignores: [
+      '**/node_modules/**',
+      '**/dist/**',
+      '**/coverage/**',
+      '**/generated/**',
+      '**/*.generated.*',
+      'openapi.json',
+      'web/test-results/**',
+      'web/playwright-report/**',
+      '.dev/**',
+      '.vs/**',
+      '.ci-artifacts/**',
+      'work/**',
+    ],
+  },
   ...tseslint.configs.recommended,
-  { rules: { '@typescript-eslint/no-explicit-any': 'error' } },
+  {
+    files: ['**/*.{ts,tsx,js,mjs,cjs}'],
+    languageOptions: {
+      parserOptions: { experimentalDecorators: true, ecmaFeatures: { jsx: true } },
+    },
+    plugins: { '@stylistic': stylistic },
+    rules: {
+      '@typescript-eslint/no-explicit-any': 'error',
+      '@stylistic/indent': ['error', 2, { SwitchCase: 1 }],
+      '@stylistic/no-tabs': 'error',
+      '@stylistic/quotes': ['error', 'single', { avoidEscape: true }],
+      '@stylistic/semi': ['error', 'always'],
+      '@stylistic/member-delimiter-style': 'error',
+      '@stylistic/comma-dangle': ['error', 'always-multiline'],
+      '@stylistic/comma-spacing': ['error', { before: false, after: true }],
+      '@stylistic/object-curly-spacing': ['error', 'always'],
+      '@stylistic/array-bracket-spacing': ['error', 'never'],
+      '@stylistic/key-spacing': ['error', { beforeColon: false, afterColon: true }],
+      '@stylistic/type-annotation-spacing': 'error',
+      '@stylistic/keyword-spacing': 'error',
+      '@stylistic/space-infix-ops': 'error',
+      '@stylistic/arrow-spacing': 'error',
+      '@stylistic/space-before-blocks': 'error',
+      '@stylistic/function-call-argument-newline': ['error', 'consistent'],
+      '@stylistic/lines-between-class-members': ['error', 'always'],
+      '@stylistic/padding-line-between-statements': [
+        'error',
+        { blankLine: 'always', prev: '*', next: 'return' },
+        { blankLine: 'always', prev: 'import', next: '*' },
+        { blankLine: 'any', prev: 'import', next: 'import' },
+      ],
+      '@stylistic/max-len': ['error', { code: 150, tabWidth: 2 }],
+      '@stylistic/no-trailing-spaces': 'error',
+      '@stylistic/no-multiple-empty-lines': ['error', { max: 1, maxEOF: 0, maxBOF: 0 }],
+      '@stylistic/linebreak-style': ['error', 'unix'],
+      '@stylistic/eol-last': ['error', 'always'],
+    },
+  },
 );

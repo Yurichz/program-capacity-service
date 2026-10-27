@@ -16,6 +16,7 @@ import { UserService } from './user.service.js';
 @Controller('users')
 export class UserController {
   constructor(private readonly service: UserService) {}
+
   @Get('me')
   @Serialize(UserEntity)
   @ApiDefaultResponse(UserEntity)
@@ -23,6 +24,7 @@ export class UserController {
   me(@CurrentUser() user: AuthorizableUser) {
     return this.service.me(user.id);
   }
+
   @Patch('me')
   @Serialize(UserEntity)
   @ApiDefaultResponse(UserEntity)

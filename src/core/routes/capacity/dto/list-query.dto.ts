@@ -9,6 +9,7 @@ export class ListQueryDto {
   @Min(1)
   @Max(1000000)
   page = 1;
+
   @ApiPropertyOptional({ default: 10, minimum: 1, maximum: 100 })
   @Type(() => Number)
   @IsInt()
@@ -21,10 +22,12 @@ export class ReservationListQueryDto extends ListQueryDto {
   @IsOptional()
   @IsIn(['ACTIVE', 'RELEASED', 'RECONCILED_CLOSED'])
   status?: 'ACTIVE' | 'RELEASED' | 'RECONCILED_CLOSED';
+
   @ApiPropertyOptional({ enum: ['USD', 'EUR', 'GBP', 'JPY', 'KWD'] })
   @IsOptional()
   @IsIn(['USD', 'EUR', 'GBP', 'JPY', 'KWD'])
   currency?: string;
+
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()

@@ -45,6 +45,7 @@ function makeCapacity(client, health, fx = new FxRateProvider()) {
     new FinancialTransactionService(prisma),
     prisma,
   );
+
   return new CapacityService(repo, health, cl);
 }
 function makeTreasury(client, source) {
@@ -59,6 +60,7 @@ function makeTreasury(client, source) {
     transactions,
     prisma,
   );
+
   return new TreasuryService(
     new TreasuryClService(repo, new TreasuryRepository(prisma, settings), transactions, settings),
     capacity,
@@ -83,6 +85,7 @@ async function makeApplication(settings, client, health) {
     .compile();
   const app = configureApplication(module.createNestApplication({ logger: false }));
   await app.init();
+
   return app;
 }
 
@@ -121,6 +124,7 @@ async function fixture(limit = 10000n) {
   };
   const health = new ConsumerHealth();
   health.connected = true;
+
   return {
     id,
     principal,
@@ -141,6 +145,7 @@ function rendezvous(parties) {
   const ready = new Promise((resolve) => {
     release = resolve;
   });
+
   return async () => {
     if (++arrived === parties) release();
     await ready;
@@ -180,6 +185,7 @@ async function apply(f, e, offset = key()) {
 }
 async function snapshot(f, revision) {
   const v = await f.service.view(f.principal, f.id);
+
   return event(
     f,
     revision ?? (BigInt(v.highestSeenTreasuryRevision) + 1n).toString(),
@@ -283,6 +289,7 @@ describe('PostgreSQL financial concurrency', () => {
       const lock = service.repository.lock.bind(service.repository);
       service.repository.lock = async (...args) => {
         await meet();
+
         return lock(...args);
       };
     }
@@ -615,8 +622,7 @@ describe('treasury reconciliation and deduplication', () => {
     const f = await fixture();
     const writes = Promise.all(
       Array.from({ length: 12 }, () =>
-        f.service.reserve(f.principal, f.id, input('1'), key(), key()),
-      ),
+        f.service.reserve(f.principal, f.id, input('1'), key(), key())),
     );
     for (let i = 0; i < 12; i++) {
       const v = await f.service.view(f.principal, f.id);
@@ -688,6 +694,7 @@ describe('HTTP authentication, CASL, serialization and replay', () => {
         .setJti(key())
         .setExpirationTime(expiry)
         .sign(Buffer.from(secret));
+
       return { token, user, sid };
     }
     try {

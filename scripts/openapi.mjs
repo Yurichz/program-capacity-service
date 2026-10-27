@@ -2,6 +2,7 @@ import './runtime-env.mjs';
 import { writeFile } from 'node:fs/promises';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { createApplication } from '../dist/core/app/create-application.js';
+
 const app = await createApplication();
 try {
   const document = SwaggerModule.createDocument(

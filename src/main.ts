@@ -52,6 +52,7 @@ function shutdown() {
     }
     if (process.exitCode) process.exit(1);
   })();
+
   return shutdownTask;
 }
 process.once('SIGTERM', () => {

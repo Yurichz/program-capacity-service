@@ -31,21 +31,27 @@ test('production HTTP contracts, Auth/Users and real transactions', async (t) =>
     falsy() {
       return false;
     }
+
     zero() {
       return 0;
     }
+
     empty() {
       return '';
     }
+
     nil() {
       return null;
     }
+
     missing() {
       return undefined;
     }
+
     domain() {
       return { data: false };
     }
+
     publicData() {
       return new ApiResult(
         [
@@ -61,12 +67,15 @@ test('production HTTP contracts, Auth/Users and real transactions', async (t) =>
         meta,
       );
     }
+
     noContent() {
       return { ignored: true };
     }
+
     file() {
       return new StreamableFile(Buffer.from('file-content'), { type: 'text/plain' });
     }
+
     crash() {
       throw new Error('private-stack-and-secret');
     }
@@ -105,6 +114,7 @@ test('production HTTP contracts, Auth/Users and real transactions', async (t) =>
       ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
     });
     const text = await response.text();
+
     return {
       status: response.status,
       text,
@@ -212,8 +222,7 @@ test('production HTTP contracts, Auth/Users and real transactions', async (t) =>
         request('auth/token/refresh', {
           method: 'POST',
           body: { refreshToken: pair.refreshToken },
-        }),
-      ),
+        })),
     );
     assert.deepEqual(race.map((r) => r.status).sort(), [200, 401]);
     pair = race.find((r) => r.status === 200).json.data;
@@ -320,8 +329,7 @@ test('production HTTP contracts, Auth/Users and real transactions', async (t) =>
           await new Promise((resolve) => setTimeout(resolve, 15));
           assert.equal(prisma.client, client);
           if (index) throw new Error('isolated failure');
-        }),
-      ),
+        })),
     );
     assert.deepEqual(
       result.map((x) => x.status),

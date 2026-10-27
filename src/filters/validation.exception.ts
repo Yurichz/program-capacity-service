@@ -6,6 +6,7 @@ function flatten(errors: ValidationError[], parent = ''): Record<string, string[
     {},
     ...errors.map((error) => {
       const path = parent ? `${parent}.${error.property}` : error.property;
+
       return {
         ...(error.constraints ? { [path]: Object.values(error.constraints) } : {}),
         ...flatten(error.children ?? [], path),

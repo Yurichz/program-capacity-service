@@ -45,7 +45,6 @@ jobs:
       - run: npm ci --prefix web
       - run: npx --no-install prisma validate
       - run: npm run db:generate
-      - run: npm run format:check
       - run: npm run lint
       - run: npm --prefix web run lint
       - run: npm run typecheck

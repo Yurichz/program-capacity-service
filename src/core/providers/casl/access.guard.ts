@@ -43,12 +43,14 @@ export class AccessGuard implements CanActivate {
       if (!ability.can(rule.action, rule.target)) throw new ForbiddenException();
       if (!ability.can(rule.action, subject(rule.target as string, resource)))
         throw new NotFoundException();
+
       return true;
     }
     // Conditions on a resource require its hook; checking the class alone cannot establish ownership.
     const relevant = ability.rulesFor(rule.action, rule.target as string);
     if (!ability.can(rule.action, rule.target) || relevant.some((item) => item.conditions))
       throw new ForbiddenException();
+
     return true;
   }
 }

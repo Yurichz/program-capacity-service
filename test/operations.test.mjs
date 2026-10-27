@@ -165,6 +165,7 @@ test('authenticated readiness, shutdown admission and real PostgreSQL lock timeo
   const response = {
     status(value) {
       status = value;
+
       return this;
     },
     json(value) {

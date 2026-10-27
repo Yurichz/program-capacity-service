@@ -41,6 +41,7 @@ export class TokenService {
         },
       ),
     ]);
+
     return { accessToken, refreshToken };
   }
 
@@ -66,6 +67,7 @@ export class TokenService {
         !claims.jti
       )
         throw new Error('Invalid claims');
+
       return claims;
     } catch {
       throw new UnauthorizedException();
@@ -75,6 +77,7 @@ export class TokenService {
   hashRefresh(token: string) {
     return createHash('sha256').update(token).digest('hex');
   }
+
   refreshExpiresAt() {
     return new Date(
       Date.now() + this.config.getOrThrow<number>('REFRESH_TOKEN_TTL_SECONDS') * 1000,

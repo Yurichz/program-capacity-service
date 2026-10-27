@@ -17,6 +17,7 @@ export class FinancialTransactionService {
             await client.$executeRaw`SET LOCAL lock_timeout = '2s'`;
             await client.$executeRaw`SET LOCAL statement_timeout = '8s'`;
             await client.$executeRaw`SET LOCAL transaction_timeout = '10s'`;
+
             return fn(client);
           },
           { isolationLevel: 'ReadCommitted', maxWait: 2000, timeout: 10000 },

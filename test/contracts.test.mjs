@@ -10,6 +10,7 @@ test('pagination uses consistent bounds and explicit result', async () => {
     async (skip, take) => {
       assert.equal(skip, 10);
       assert.equal(take, 10);
+
       return [{ id: 11 }];
     },
     async () => 21,

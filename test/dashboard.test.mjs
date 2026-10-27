@@ -36,6 +36,7 @@ test('dashboard read APIs use actual sessions, scoped queries and public represe
       },
       ...(body ? { body: JSON.stringify(body) } : {}),
     });
+
     return {
       status: response.status,
       ...(response.status !== 204 ? { body: await response.json() } : {}),

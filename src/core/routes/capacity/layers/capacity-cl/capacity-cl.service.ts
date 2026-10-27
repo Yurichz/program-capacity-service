@@ -26,9 +26,11 @@ import {
   FinancialTransactionService,
   type Tx,
 } from '#core/providers/prisma/financial-transaction.service.js';
+
 @Injectable()
 export class CapacityClService {
   private readonly logger = new Logger(CapacityClService.name);
+
   constructor(
     readonly repository: CapacityRepository,
     readonly health: ConsumerHealth,
@@ -36,6 +38,7 @@ export class CapacityClService {
     private readonly transactions: FinancialTransactionService,
     private readonly prisma: PrismaService,
   ) {}
+
   async access(
     principal: Principal,
     id: string,
@@ -45,8 +48,10 @@ export class CapacityClService {
     if (!p) return fail(404, 'NOT_FOUND', 'Program not found');
     if (!principal.permissions.includes(permission))
       return fail(403, 'FORBIDDEN', 'Permission required');
+
     return p;
   }
+
   private replay(
     saved: { fingerprint: string; status: number | null; result: Prisma.JsonValue | null },
     hash: string,
@@ -55,8 +60,10 @@ export class CapacityClService {
       return fail(409, 'IDEMPOTENCY_KEY_REUSED', 'Key already belongs to a different request');
     if (saved.status !== null && saved.result !== null)
       return { status: saved.status, body: saved.result as Record<string, unknown> };
+
     return undefined;
   }
+
   private async command(
     principal: Principal,
     id: string,
@@ -80,6 +87,7 @@ export class CapacityClService {
         return fail(503, 'SERVICE_UNAVAILABLE', 'Service temporarily unavailable');
       const result = await work(tx, p);
       await this.repository.saveResult(tx, principal, key, result);
+
       return result;
     });
     this.logger.log({
@@ -90,8 +98,10 @@ export class CapacityClService {
       durationMs: performance.now() - started,
       outcome: result.body.code ?? 'success',
     });
+
     return result;
   }
+
   async reserve(
     principal: Principal,
     id: string,
@@ -119,6 +129,7 @@ export class CapacityClService {
         ? { rate: '1', source: 'IDENTITY', direction: DIRECTION, asOf: new Date() }
         : await this.fx.quote(input.currency, currency);
     const held = convert(amount, input.currency, currency, quote.rate);
+
     return this.command(principal, id, key, hash, requestId, 'reserve', async (tx, p) => {
       if (!this.health.connected || p.syncStatus !== 'READY')
         return refusal(
@@ -171,9 +182,11 @@ export class CapacityClService {
         tenantId: principal.tenantId,
         programId: id,
       });
+
       return { status: 201, body: reservationDto(r, currency) };
     });
   }
+
   async release(
     principal: Principal,
     id: string,
@@ -189,6 +202,7 @@ export class CapacityClService {
       action: 'release',
       body: {},
     });
+
     return this.command(principal, id, key, hash, requestId, 'release', async (tx, p) => {
       const r = await this.repository.reservation(tx, principal.tenantId, id, rid);
       if (!r) return refusal('NOT_FOUND', 'Reservation not found', requestId, 404);
@@ -215,11 +229,14 @@ export class CapacityClService {
         requestId,
         rid,
       );
+
       return { status: 200, body: reservationDto(closed, currencySchema.parse(p.currency)) };
     });
   }
+
   async view(principal: Principal, id: string) {
     await this.access(principal, id, 'treasury:reconcile');
+
     return this.prisma.$tx(
       async (tx) => {
         const { program: p, reservations } = await this.repository.consistentView(
@@ -227,6 +244,7 @@ export class CapacityClService {
           principal.tenantId,
           id,
         );
+
         return {
           programId: id,
           currency: p.currency,
@@ -235,8 +253,7 @@ export class CapacityClService {
           lastAppliedTreasuryRevision: p.lastAppliedTreasuryRevision.toString(),
           highestSeenTreasuryRevision: p.highestSeenTreasuryRevision.toString(),
           reservations: reservations.map((r) =>
-            reservationDto(r, currencySchema.parse(p.currency)),
-          ),
+            reservationDto(r, currencySchema.parse(p.currency))),
         };
       },
       { isolationLevel: 'RepeatableRead', timeout: 10000 },

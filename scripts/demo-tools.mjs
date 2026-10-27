@@ -85,6 +85,7 @@ export function createDemoServer({
               error: { code: 413000, message: 'Snapshot exceeds 2 MiB' },
             });
             resolve(null);
+
             return;
           }
           chunks.push(chunk);
