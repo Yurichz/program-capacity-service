@@ -1,0 +1,386 @@
+{
+  "numFailedTestSuites": 0,
+  "numFailedTests": 0,
+  "numPassedTestSuites": 1,
+  "numPassedTests": 19,
+  "numPendingTestSuites": 0,
+  "numPendingTests": 0,
+  "numRuntimeErrorTestSuites": 0,
+  "numTodoTests": 0,
+  "numTotalTestSuites": 1,
+  "numTotalTests": 19,
+  "openHandles": [],
+  "snapshot": {
+    "added": 0,
+    "didUpdate": false,
+    "failure": false,
+    "filesAdded": 0,
+    "filesRemoved": 0,
+    "filesRemovedList": [],
+    "filesUnmatched": 0,
+    "filesUpdated": 0,
+    "matched": 0,
+    "total": 0,
+    "unchecked": 0,
+    "uncheckedKeysByFile": [],
+    "unmatched": 0,
+    "updated": 0
+  },
+  "startTime": 1793120838778,
+  "success": true,
+  "testResults": [
+    {
+      "assertionResults": [
+        {
+          "ancestorTitles": [
+            "money, FX, schemas and canonical fingerprints"
+          ],
+          "duration": 2,
+          "failing": false,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "money, FX, schemas and canonical fingerprints JPY scale",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 2,
+          "retryMessages": [],
+          "retryReasons": [],
+          "status": "passed",
+          "title": "JPY scale",
+          "startAt": 1793120839412
+        },
+        {
+          "ancestorTitles": [
+            "money, FX, schemas and canonical fingerprints"
+          ],
+          "duration": 0,
+          "failing": false,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "money, FX, schemas and canonical fingerprints USD scale",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 2,
+          "retryMessages": [],
+          "retryReasons": [],
+          "status": "passed",
+          "title": "USD scale",
+          "startAt": 1793120839414
+        },
+        {
+          "ancestorTitles": [
+            "money, FX, schemas and canonical fingerprints"
+          ],
+          "duration": 1,
+          "failing": false,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "money, FX, schemas and canonical fingerprints KWD scale",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 2,
+          "retryMessages": [],
+          "retryReasons": [],
+          "status": "passed",
+          "title": "KWD scale",
+          "startAt": 1793120839414
+        },
+        {
+          "ancestorTitles": [
+            "money, FX, schemas and canonical fingerprints"
+          ],
+          "duration": 5,
+          "failing": false,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "money, FX, schemas and canonical fingerprints rejects invalid money 0",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryMessages": [],
+          "retryReasons": [],
+          "status": "passed",
+          "title": "rejects invalid money 0",
+          "startAt": 1793120839415
+        },
+        {
+          "ancestorTitles": [
+            "money, FX, schemas and canonical fingerprints"
+          ],
+          "duration": 0,
+          "failing": false,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "money, FX, schemas and canonical fingerprints rejects invalid money -1",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryMessages": [],
+          "retryReasons": [],
+          "status": "passed",
+          "title": "rejects invalid money -1",
+          "startAt": 1793120839421
+        },
+        {
+          "ancestorTitles": [
+            "money, FX, schemas and canonical fingerprints"
+          ],
+          "duration": 1,
+          "failing": false,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "money, FX, schemas and canonical fingerprints rejects invalid money 1e2",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryMessages": [],
+          "retryReasons": [],
+          "status": "passed",
+          "title": "rejects invalid money 1e2",
+          "startAt": 1793120839421
+        },
+        {
+          "ancestorTitles": [
+            "money, FX, schemas and canonical fingerprints"
+          ],
+          "duration": 0,
+          "failing": false,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "money, FX, schemas and canonical fingerprints rejects invalid money NaN",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryMessages": [],
+          "retryReasons": [],
+          "status": "passed",
+          "title": "rejects invalid money NaN",
+          "startAt": 1793120839422
+        },
+        {
+          "ancestorTitles": [
+            "money, FX, schemas and canonical fingerprints"
+          ],
+          "duration": 1,
+          "failing": false,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "money, FX, schemas and canonical fingerprints rejects invalid money Infinity",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryMessages": [],
+          "retryReasons": [],
+          "status": "passed",
+          "title": "rejects invalid money Infinity",
+          "startAt": 1793120839422
+        },
+        {
+          "ancestorTitles": [
+            "money, FX, schemas and canonical fingerprints"
+          ],
+          "duration": 0,
+          "failing": false,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "money, FX, schemas and canonical fingerprints rejects invalid money 01",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryMessages": [],
+          "retryReasons": [],
+          "status": "passed",
+          "title": "rejects invalid money 01",
+          "startAt": 1793120839423
+        },
+        {
+          "ancestorTitles": [
+            "money, FX, schemas and canonical fingerprints"
+          ],
+          "duration": 0,
+          "failing": false,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "money, FX, schemas and canonical fingerprints rejects invalid money  1",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryMessages": [],
+          "retryReasons": [],
+          "status": "passed",
+          "title": "rejects invalid money  1",
+          "startAt": 1793120839423
+        },
+        {
+          "ancestorTitles": [
+            "money, FX, schemas and canonical fingerprints"
+          ],
+          "duration": 0,
+          "failing": false,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "money, FX, schemas and canonical fingerprints rejects invalid money 1.001",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryMessages": [],
+          "retryReasons": [],
+          "status": "passed",
+          "title": "rejects invalid money 1.001",
+          "startAt": 1793120839423
+        },
+        {
+          "ancestorTitles": [
+            "money, FX, schemas and canonical fingerprints"
+          ],
+          "duration": 0,
+          "failing": false,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "money, FX, schemas and canonical fingerprints rejects invalid money 1.",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryMessages": [],
+          "retryReasons": [],
+          "status": "passed",
+          "title": "rejects invalid money 1.",
+          "startAt": 1793120839424
+        },
+        {
+          "ancestorTitles": [
+            "money, FX, schemas and canonical fingerprints"
+          ],
+          "duration": 2,
+          "failing": false,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "money, FX, schemas and canonical fingerprints rejects invalid money 1,00",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryMessages": [],
+          "retryReasons": [],
+          "status": "passed",
+          "title": "rejects invalid money 1,00",
+          "startAt": 1793120839424
+        },
+        {
+          "ancestorTitles": [
+            "money, FX, schemas and canonical fingerprints"
+          ],
+          "duration": 0,
+          "failing": false,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "money, FX, schemas and canonical fingerprints rejects invalid money 92233720368547758.08",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 1,
+          "retryMessages": [],
+          "retryReasons": [],
+          "status": "passed",
+          "title": "rejects invalid money 92233720368547758.08",
+          "startAt": 1793120839426
+        },
+        {
+          "ancestorTitles": [
+            "money, FX, schemas and canonical fingerprints"
+          ],
+          "duration": 1,
+          "failing": false,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "money, FX, schemas and canonical fingerprints zero limits, scale overflow and BIGINT bounds",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 4,
+          "retryMessages": [],
+          "retryReasons": [],
+          "status": "passed",
+          "title": "zero limits, scale overflow and BIGINT bounds",
+          "startAt": 1793120839426
+        },
+        {
+          "ancestorTitles": [
+            "money, FX, schemas and canonical fingerprints"
+          ],
+          "duration": 3,
+          "failing": false,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "money, FX, schemas and canonical fingerprints FX rounds toward capacity consumption and handles different scales",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 10,
+          "retryMessages": [],
+          "retryReasons": [],
+          "status": "passed",
+          "title": "FX rounds toward capacity consumption and handles different scales",
+          "startAt": 1793120839427
+        },
+        {
+          "ancestorTitles": [
+            "money, FX, schemas and canonical fingerprints"
+          ],
+          "duration": 1,
+          "failing": false,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "money, FX, schemas and canonical fingerprints demo quotes use controlled time; expiry and future timestamps fail",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 6,
+          "retryMessages": [],
+          "retryReasons": [],
+          "status": "passed",
+          "title": "demo quotes use controlled time; expiry and future timestamps fail",
+          "startAt": 1793120839430
+        },
+        {
+          "ancestorTitles": [
+            "money, FX, schemas and canonical fingerprints"
+          ],
+          "duration": 1,
+          "failing": false,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "money, FX, schemas and canonical fingerprints fingerprints are order independent and retain falsy values",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 3,
+          "retryMessages": [],
+          "retryReasons": [],
+          "status": "passed",
+          "title": "fingerprints are order independent and retain falsy values",
+          "startAt": 1793120839431
+        },
+        {
+          "ancestorTitles": [
+            "money, FX, schemas and canonical fingerprints"
+          ],
+          "duration": 5,
+          "failing": false,
+          "failureDetails": [],
+          "failureMessages": [],
+          "fullName": "money, FX, schemas and canonical fingerprints boundaries reject unknown fields and invalid env/events",
+          "invocations": 1,
+          "location": null,
+          "numPassingAsserts": 4,
+          "retryMessages": [],
+          "retryReasons": [],
+          "status": "passed",
+          "title": "boundaries reject unknown fields and invalid env/events",
+          "startAt": 1793120839432
+        }
+      ],
+      "endTime": 1793120839460,
+      "message": "",
+      "name": "G:\\My projects\\program-capacity-service\\test\\financial\\unit.test.mjs",
+      "startTime": 1793120838822,
+      "status": "passed",
+      "summary": ""
+    }
+  ],
+  "wasInterrupted": false
+}
