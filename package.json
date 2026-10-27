@@ -6,7 +6,7 @@
   },
   "dependencies": {
     "@casl/ability": "6.8.1",
-    "@nestjs/common": "11.2.8",
+    "@nestjs/common": "12.2.0",
     "@nestjs/config": "4.0.4",
     "@nestjs/core": "11.2.8",
     "@nestjs/jwt": "11.0.2",
